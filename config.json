@@ -1,0 +1,9 @@
+{
+  "host": "127.0.0.1",
+  "port": 9400,
+  "version": "v1",
+  "locale": "zh-cn",
+  "target": "http://127.0.0.1:9500/v1",
+  "baseURL": "http://127.0.0.1:9400/v1",
+  "baseWSURL": "ws://127.0.0.1:9400/v1"
+}
