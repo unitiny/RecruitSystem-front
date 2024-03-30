@@ -2,6 +2,18 @@
 import {RouterLink, RouterView} from 'vue-router'
 import 'element-plus/dist/index.css'
 import Header from '@/components/basic/Header.vue'
+import {onBeforeMount} from "vue";
+import {useGlobalStore} from "@/store/pinia";
+import {request} from "@/utils/axios";
+
+function getToken() :string {
+  const store = useGlobalStore()
+  return store["user"].token ?? ""
+}
+
+onBeforeMount(() => {
+  request.defaults.headers.token = getToken()
+})
 </script>
 
 <template>
@@ -31,6 +43,7 @@ import Header from '@/components/basic/Header.vue'
   position: fixed;
   top: 0;
   left: 0;
+  background: $theme-background;
   @include flex(column, start, center);
 }
 

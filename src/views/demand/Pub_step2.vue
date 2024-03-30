@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import {computed, defineEmits, defineExpose, defineProps, onMounted, ref} from "vue"
+import {computed, defineEmits, defineExpose, defineProps, onMounted, ref, watch} from "vue"
 import {baseURL} from "@/utils/axios";
 import {demandGroup} from "@/api/api";
-import type {UploadProps, UploadUserFile} from 'element-plus'
+import type {UploadFile, UploadFiles, UploadProps, UploadUserFile} from 'element-plus'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {useGlobalStore} from "@/store/pinia";
 
@@ -14,6 +14,7 @@ const store = useGlobalStore()
 const demand = computed(() => props.demand)
 
 const formData = ref({
+  type: 0,
   name: "",
   demand: "",
   materialPath: "",
@@ -89,6 +90,15 @@ function handlePreview(uploadFile) {
   console.log(uploadFile)
 }
 
+function handleError(error: Error, uploadFile: UploadFile, uploadFiles: UploadFiles) {
+  console.log(uploadFile)
+  ElMessage({
+    showClose: true,
+    type: "error",
+    message: "上传失败",
+  })
+}
+
 function handleExceed(files, uploadFiles) {
   ElMessage.warning(
       `The limit is 3, you selected ${files.length} files this time, add up to ${
@@ -109,13 +119,37 @@ function beforeRemove(uploadFile, uploadFiles) {
 function handleSuccess(response, uploadFile, uploadFiles) {
   console.log(response, uploadFile, uploadFiles)
   formData.value.materialPath = response["path"]
+  ElMessage({
+    showClose: true,
+    type: "success",
+    message: "上传成功",
+  })
 }
 
 function updateDemand(dm) {
+  dm.value.type = formData.value.type
   dm.value.name = formData.value.name
   dm.value.demand = formData.value.demand
   dm.value.materialPath = formData.value.materialPath
 }
+
+function updateFormData(dm) {
+  formData.value.type = dm.type
+  formData.value.name = dm.name
+  formData.value.demand = dm.demand
+  formData.value.materialPath = dm.materialPath
+}
+
+watch(
+    () => props.demand,
+    (value, oldValue, onCleanup) => {
+      console.log(value, oldValue, demand.value)
+      updateFormData(value)
+    },
+    {
+      immediate: true
+    }
+)
 
 onMounted(() => {
   formData.value.name = demand.value.name
@@ -128,47 +162,62 @@ defineExpose({updateDemand})
 <template>
   <el-row class="row content" justify="center">
     <el-row class="row inputItem">
-      <el-col :span="2">需求名称：</el-col>
+      <el-col :span="3">发布身份：</el-col>
       <el-col :span="14">
+        <el-radio-group v-model="formData.type">
+          <el-radio :label="1" :value="1" size="large" border>雇主</el-radio>
+          <el-radio :label="2" :value="2" size="large" border>合伙人</el-radio>
+        </el-radio-group>
+      </el-col>
+    </el-row>
+    <el-row class="row inputItem">
+      <el-col :span="3">需求名称：</el-col>
+      <el-col :span="20">
         <el-input v-model="formData.name" placeholder=""/>
       </el-col>
     </el-row>
     <el-row class="row inputItem">
-      <el-col :span="2">需求概述：</el-col>
-      <el-col :span="14">
+      <el-col :span="3">需求概述：</el-col>
+      <el-col :span="20">
         <el-input
             v-model="formData.demand"
-            :rows="2"
+            :rows="5"
             type="textarea"
             placeholder="Please input"
         />
       </el-col>
     </el-row>
     <el-row class="row inputItem">
-      <el-col :span="2">需求资料：</el-col>
-      <el-col :span="14">
+      <el-col :span="3">需求资料：</el-col>
+      <el-col :span="20">
         <el-upload
             v-model:file-list="fileList"
             name="material"
             class="upload-demo"
+            drag
             :headers="{
-              token: store['user'].token
+              token: store['user'].token,
             }"
             :data="{
-              did: props.demand.id
+              did: demand.id
             }"
+            accept="application/zip"
             :action="baseURL+demandGroup.uploadMaterial"
             multiple
+            :on-error="handleError"
             :on-preview="handlePreview"
             :on-remove="handleRemove"
             :on-success="handleSuccess"
             :before-remove="beforeRemove"
             :limit="3"
             :on-exceed="handleExceed">
-          <el-button type="primary">文件上传</el-button>
+          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+          <div class="el-upload__text">
+            拖拽文件到此或者 <em>点击上传</em>
+          </div>
           <template #tip>
             <div class="el-upload__tip">
-              <!--              jpg/png files with a size less than 500KB.-->
+              仅支持zip文件
             </div>
           </template>
         </el-upload>

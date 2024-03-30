@@ -4,8 +4,10 @@ import {ref} from "vue";
 import {global} from "@/static/static";
 import {request} from "@/utils/axios";
 import {demandGroup} from "@/api/api";
+import Demand from "@/components/demand/Demand.vue"
 import {diffDay, getTags, getPaymentWay} from "@/utils/utils";
 import router from "@/router";
+import {useGlobalStore} from "@/store/pinia";
 
 const avatar = global.path.static + '/img/avatar.jpg'
 const searchData = ref({
@@ -147,6 +149,8 @@ const searchData = ref({
     }]
 })
 
+const store = useGlobalStore()
+const scrollerRef = ref(null)
 const demandList = ref([])
 const demandTotal = ref(-1)
 const demandRequest = {
@@ -174,7 +178,7 @@ function searchDemandList() {
   demandRequest.duration = parseInt(searchData.value.optionList[3].value)
   demandRequest.recruitNum = parseInt(searchData.value.optionList[4].value)
   demandRequest.status = parseInt(searchData.value.optionList[5].value)
-  demandRequest.tag  = parseInt(searchData.value.optionList[6].value)
+  demandRequest.tag = parseInt(searchData.value.optionList[6].value)
   console.log(searchData.value, demandRequest)
 
   getDemandList()
@@ -203,134 +207,127 @@ function demandDetail(did) {
     }
   })
 }
+
+function scrollerToTop() {
+  scrollerRef.value.scrollTop = 0
+}
 </script>
 
 <template>
-  <el-row class="container content main">
-    <!--  搜索板块  -->
-    <el-row :span="24" class="board">
-      <el-col class="body">
-        <el-row :span="24" style="margin-bottom: 40px">
-          <el-input
-              v-model="searchData.searchVal"
-              @change="searchDemandList"
-              placeholder="Please input"
-              class="input-with-select"
-              size="large">
-            <!--            <template #prepend>-->
-            <!--              <el-select v-model="select" placeholder="Select" style="width: 115px">-->
-            <!--                <el-option label="Restaurant" value="1"/>-->
-            <!--                <el-option label="Order No." value="2"/>-->
-            <!--                <el-option label="Tel" value="3"/>-->
-            <!--              </el-select>-->
-            <!--            </template>-->
-            <template #append>
-              <el-button :icon="Search"/>
-            </template>
-          </el-input>
-        </el-row>
-        <el-row>
-          <el-col :span="6" :gutter="20" style="margin-bottom: 10px"
-                  v-for="item in searchData.optionList">
-            <el-select
-                v-model="item.value"
-                @change="searchDemandList"
-                class="m-2"
-                :placeholder="item.text"
-                clearable
-                size="default"
-                style="width: 150px">
-              <el-option
-                  v-for="item1 in item.options"
-                  :key="item1.value"
-                  :label="item1.label"
-                  :value="item1.value"
-              />
-            </el-select>
-          </el-col>
-        </el-row>
-      </el-col>
-    </el-row>
+  <div class="home-main">
+    <el-button class="backTop" circle @click.stop="scrollerToTop">
+      <el-icon>
+        <ArrowUp/>
+      </el-icon>
+    </el-button>
+    <el-row class="main">
+      <div ref="scrollerRef" v-infinite-scroll="getDemandList" infinite-scroll-immediate="true"
+           class="demand-list content">
+          <!--  搜索板块  -->
+          <el-row class="search-board">
+            <el-row class="search">
+              <el-input
+                  v-model="searchData.searchVal"
+                  @change="searchDemandList"
+                  placeholder="Please input"
+                  size="large"
+                  class="input">
+              </el-input>
+              <el-button class="button" type="primary">
+                <el-icon>
+                  <Search/>
+                </el-icon>
+                &nbsp;搜索
+              </el-button>
+            </el-row>
+            <el-row>
+              <el-col :span="6" :gutter="20" style="margin-bottom: 10px"
+                      v-for="item in searchData.optionList">
+                <el-select
+                    :collapse-tags-tooltip="true"
+                    v-model="item.value"
+                    @change="searchDemandList"
+                    class="m-2"
+                    :placeholder="item.text"
+                    clearable
+                    size="default"
+                    style="width: 150px">
+                  <el-option
+                      v-for="item1 in item.options"
+                      :key="item1.value"
+                      :label="item1.label"
+                      :value="item1.value"
+                  />
+                </el-select>
+              </el-col>
+            </el-row>
+          </el-row>
 
-    <!--  需求列表  -->
-    <el-row v-infinite-scroll="getDemandList" infinite-scroll-immediate="true" class="demand-list">
-      <el-row v-for="item in demandList" :key="item.id"
-              :span="24"
-              @click="demandDetail(item.id)"
-              class="board">
-        <el-col class="body">
-          <el-row :span="24" style="padding: 10px;">
-            <el-col :span="20">
-              <el-row class="flex-ai-center">
-                <el-col :span="6">{{ item.name }}</el-col>
-                <el-col :span="6" class="flex-ai-center">
-                  <b>1/{{ item.recruitNum }}</b>&nbsp;
-                  <el-icon>
-                    <UserFilled/>
-                  </el-icon>
-                </el-col>
-                <el-col :span="6" v-if="item.type === 2">
-                  <el-tag>合伙人</el-tag>
-                </el-col>
-              </el-row>
-              <el-row style="margin-top: 10px;">
-                <el-col :span="4" style="margin: 0 0 10px 0;">
-                  <el-tag type="info" style="color: black">￥{{ item.remuneration }}</el-tag>
-                </el-col>
-                <el-col :span="4" style="margin: 0 0 10px 0;">
-                  <el-tag type="info" style="color: black">{{ diffDay(item.start, item.end) }}天</el-tag>
-                </el-col>
-                <el-col :span="4" style="margin: 0 0 10px 0;" v-if="item.paymentWay !== 0">
-                  <el-tag type="info" style="color: black">{{ getPaymentWay(item.paymentWay) }}</el-tag>
-                </el-col>
-                <el-col :span="4" style="margin: 0 0 10px 0;" v-if="item.hasPay">
-                  <el-tag type="info" style="color: black">已付款</el-tag>
-                </el-col>
-              </el-row>
-            </el-col>
-            <el-col :span="4">
-              <el-avatar :size="40" :src="avatar" style="margin-right: 10px;"/>
-            </el-col>
-          </el-row>
-          <el-row>
-            {{ item.demand }}
-          </el-row>
-        </el-col>
-        <el-row class="footer flex-ai-center">
-          <span v-for="item1 in getTags(item.requireTags)" style="margin-right: 10px;">{{ item1 }}</span>
-        </el-row>
-      </el-row>
+          <!--  需求列表  -->
+          <Demand v-for="item in demandList" :key="item.id" :demand="item"></Demand>
+      </div>
+      <!--  TODO 分页-->
     </el-row>
-  </el-row>
+  </div>
+
 </template>
 
 <style scoped lang="scss">
-.main {
+.home-main {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
   justify-content: center;
+  align-items: center;
 }
 
-.board {
+.backTop {
+  z-index: 100;
+  position: fixed;
+  width: 45px;
+  height: 45px;
+  bottom: 50px;
+  right: 50px;
+}
+
+.main {
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: black;
+}
+
+.search-board {
   border-radius: 10px;
-  border: solid 1px #2f2f2f;
+  //border: solid 1px #2f2f2f;
+  background: white;
   width: 80%;
   height: 220px;
-  margin: 20px 0;
+  margin: 20px auto;
+  padding: 20px 40px;
+  box-shadow: var(--el-box-shadow-light);
 
-  .body {
-    padding: 20px;
-  }
-
-  .footer {
+  .search {
     width: 100%;
-    padding: 10px 20px;
-    background: #cbedef;
-    border-radius: 0 0 5px 5px;
+    margin-bottom: 40px;
+
+    .input {
+      width: 80%;
+    }
+
+    .button {
+      border-radius: 0 5px 5px 0;
+      font-size: 18px;
+      width: 20%;
+      height: 100%;
+    }
   }
 }
 
 .demand-list {
   width: 100%;
-  height: 400px;
+  height: 80%;
   overflow: auto;
   list-style: none;
   justify-content: center;

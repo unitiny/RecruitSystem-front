@@ -1,32 +1,35 @@
 <script setup lang="ts">
 import {ref} from "vue";
 import {request} from "@/utils/axios";
-import {API, demandGroup} from "@/api/api";
+import {API, demandGroup, userDemandGroup} from "@/api/api";
 import {useGlobalStore} from "@/store/pinia";
 import {useRouter} from "vue-router"
 import {diffDay, getTags, getPaymentWay} from "@/utils/utils";
 import {global} from "@/static/static";
-import {Delete} from "@element-plus/icons-vue";
 
 const store = useGlobalStore()
 const router = useRouter()
 
 const avatar = global.path.static + '/img/avatar.jpg'
-const demandList = ref([])
-const demandTotal = ref(-1)
-const demandRequest = {
+const userDemandList = ref([])
+const userDemandRequest = {
   start: 0,
   limit: 10,
   order: "",
-  uid: store["user"].id,
-  typ: 0,
-  duration: 0,
-  remuneration: 0,
+  applicantID: store["user"].id,
   status: 0,
-  recruitNum: 0,
-  requireTag: 0,
-  tag: 0,
   searchVal: "",
+}
+const demandList = ref([])
+const demandTotal = ref(-1)
+
+function arrangePlan(did) {
+  router.push({
+    name: "/userdemand/devarrangeplan",
+    query: {
+      did: did
+    }
+  })
 }
 
 function getDemandList() {
@@ -34,34 +37,17 @@ function getDemandList() {
     return
   }
   request({
-    url: demandGroup.list,
-    params: demandRequest
+    url: userDemandGroup.list,
+    params: userDemandRequest
   }).then(res => {
-    demandList.value.push(...res["list"])
-    demandTotal.value = ref["total"]
-    console.log(demandList.value)
-    demandRequest.start += demandRequest.limit
-  })
-}
+    userDemandList.value.push(...res["list"])
+    userDemandRequest.start += userDemandRequest.limit
 
-function editDemand(did) {
-  router.push({
-    path: "/demand/pub",
-    query: {
-      "did": did
+    for (const val of res["list"]) {
+      demandList.value.push(val["Demand"])
     }
-  })
-}
-
-function delDemand(did) {
-  request({
-    url: demandGroup.del,
-    method: API.DELETE,
-    params: {
-      did: did
-    }
-  }).then(res => {
-    demandList.value = demandList.value.filter(d => d.id !== did)
+    demandTotal.value = res["total"]
+    console.log(userDemandList.value, demandList.value)
   })
 }
 </script>
@@ -69,7 +55,9 @@ function delDemand(did) {
 <template>
   <el-row class="container content">
     <el-row v-infinite-scroll="getDemandList" infinite-scroll-immediate="true" class="demand-list">
-      <el-row v-for="item in demandList" :key="item.id" :span="24" class="board">
+      <el-row v-for="item in demandList" :key="item.id"
+              @click="arrangePlan(item.id)"
+              :span="24" class="board">
         <el-col class="body">
           <el-row :span="24" style="padding: 10px;">
             <el-col :span="20">
@@ -107,17 +95,6 @@ function delDemand(did) {
         </el-col>
         <el-row class="footer flex-ai-center">
           <span v-for="item1 in getTags(item.requireTags)" style="margin-right: 10px;">{{ item1 }}</span>
-          <el-icon @click="editDemand(item.id)">
-            <EditPen/>
-          </el-icon>
-          &nbsp;
-          <el-popconfirm @confirm="delDemand(item.id)" title="Are you sure to delete this?">
-            <template #reference>
-              <el-icon>
-                <Delete/>
-              </el-icon>
-            </template>
-          </el-popconfirm>
         </el-row>
       </el-row>
     </el-row>

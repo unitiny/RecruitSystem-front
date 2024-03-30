@@ -1,39 +1,69 @@
 import config from "/config.json"
 import {chatGroup} from "@/api/api";
-import {getRandomNum} from "@/utils/utils";
-import {useGlobalStore} from "@/store/pinia";
-
-const store = useGlobalStore()
+import {getRandomID, getRandomNum} from "@/utils/utils";
 
 class Message {
-    id: Number
-    senderID: Number
-    receiverID: Number
-    groupID: Number
+    id: string
+    senderID: number
+    receiverID: number
+    groupID: number
     chatID: string
-    type: Number
-    media: Number
-    content: string
+    type: number
+    media: number
+    errorContent: string
+    pingContent: string
+    privateContent: string
+    groupContent: string
+    systemContent: object
+    applyContent: object
+    tagContent: string
+    hasRead: boolean
+    time: string
 
     constructor({
-                    id = 0,
+                    id = "",
                     senderID = 0,
                     receiverID = 0,
                     groupID = 0,
                     chatID = "",
                     type = MessageType.ping,
                     media = 0,
-                    content = ""
+                    content,
+                    time = ""
                 }) {
-        this.id = id !== 0 ? id : getRandomNum(5)
-        this.senderID = senderID !== 0 ? senderID : store["user"].id
-        this.receiverID = receiverID !== 0 ? receiverID : store["user"].id
+        this.id = id !== "" ? id : getRandomID("ws")
+        this.senderID = senderID !== 0 ? senderID : 0
+        this.receiverID = receiverID !== 0 ? receiverID : 0
         this.chatID = senderID < receiverID ?
             `${senderID}-${receiverID}` : `${receiverID}-${senderID}`
         this.groupID = groupID
-        this.type = type
         this.media = media
-        this.content = content
+        this.time = time
+        this.hasRead = false
+        this.type = type
+        switch (type) {
+            case MessageType.error:
+                this.errorContent = content
+                break
+            case MessageType.ping:
+                this.pingContent = content
+                break
+            case MessageType.private:
+                this.privateContent = content
+                break
+            case MessageType.group:
+                this.groupContent = content
+                break
+            case MessageType.system:
+                this.systemContent = content
+                break
+            case MessageType.apply:
+                this.applyContent = content
+                break
+            case MessageType.tag:
+                this.tagContent = content
+                break
+        }
     }
 }
 
@@ -42,13 +72,24 @@ const MessageType = {
     ping: 2,
     private: 3,
     group: 4,
+    system: 5,
+    apply: 6,
+    tag: 7
+}
+
+const MessageMedia = {
+    text: 1,
+    picture: 2,
+    zip: 3,
+    apply: 4,
+    tag: 5
 }
 
 class Chat {
     socket
-    retry: Number
+    retry: number
     connected: boolean
-    timer: Number
+    timer: number
     token: string
 
     connWebsocket(token) {
@@ -110,4 +151,4 @@ class Chat {
     }
 }
 
-export {Chat, Message, MessageType}
+export {Chat, Message, MessageType, MessageMedia}

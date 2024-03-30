@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import {ref} from "vue"
+import {ref, onMounted} from "vue"
 import {global} from "@/static/static"
 import {Message, Plus} from "@element-plus/icons-vue";
 import {useRouter} from "vue-router";
+import config from "/config.json";
 import {useGlobalStore} from "@/store/pinia";
 import PersonInformation from "@/components/PersonInformation.vue"
 
@@ -10,6 +11,8 @@ const router = useRouter()
 const store = useGlobalStore()
 const logo = global.path.static + '/img/logo.jpeg'
 const avatar = global.path.static + '/img/avatar.jpg'
+const es = ref(new EventSource(config.baseURL + "/notify/sse"))
+
 const navData = ref({
   list: [{
     text: "需求列表",
@@ -35,15 +38,18 @@ const loginData = ref({
 const messageData = ref([
   {
     text: "系统通知",
-    path: "/demand/pub"
+    path: "/chat/privatechat",
+    notify: 0,
   },
   {
     text: "群聊消息",
-    path: "/demand/pub"
+    path: "/chat/privatechat",
+    notify: 0,
   },
   {
     text: "我的消息",
-    path: "/demand/pub"
+    path: "/chat/privatechat",
+    notify: 0,
   },
 ])
 
@@ -54,17 +60,36 @@ const userData = ref([
   },
   {
     text: "我的需求",
-    path: "/user/demands"
+    path: userDemandPath
   },
   {
-    text: "我的订单",
-    path: "/demand/pub"
+    text: "我的钱包",
+    path: walletPath
   },
   {
     text: "退出登录",
-    path: "/demand/pub"
+    path: loginOut
   },
 ])
+
+function userDemandPath() {
+  if (store["user"].identity === 1) {
+    return "/user/demands"
+  }
+  return "/user/devdemands"
+}
+
+function walletPath() {
+  console.log(store["user"])
+  if (store["user"].identity === 1) {
+    return "/wallet/wallet"
+  }
+  return "/wallet/devwallet"
+}
+
+function loginOut() {
+  store.updateUser({})
+}
 
 function login() {
   maskTick()
@@ -77,7 +102,7 @@ function exchangeWay() {
 
 function successHook(firstLogin) {
   maskTick()
-  if(firstLogin) {
+  if (firstLogin) {
     loginData.value.infoMaskVisible = true
   }
 }
@@ -88,7 +113,7 @@ function maskTick() {
   loginData.value.registerVisible = false
 }
 
-function exchangeNav(index: Number) {
+function exchangeNav(index: number) {
   navData.value.list[navData.value.curNav].class = navData.value.list[navData.value.curNav].class.replace("nav-active", "")
 
   navData.value.curNav = index
@@ -100,14 +125,43 @@ function pubDemand() {
   router.push("/demand/pub")
 }
 
-function skip(path) {
-  router.push(path)
+function goHome() {
+  router.push('/')
+  exchangeNav(0)
 }
+
+function skip(item) {
+  if (item.notify && item.notify > 0) {
+    item.notify = 0
+  }
+  if (typeof item.path === "string") {
+    router.push(item.path)
+  } else {
+    router.push(item.path())
+  }
+}
+
+onMounted(() => {
+  //TODO 路由为聊天界面不通知
+  let key = "Private" + store["user"].id
+  es.value.addEventListener(key, (event) => {
+    let message = JSON.parse(event["data"])
+    switch (message.type) {
+      case "Private":
+        messageData.value[2].notify += 1
+        break
+      case "Group":
+        break
+      case "Broadcast":
+        break
+    }
+  })
+})
 </script>
 
 <template>
   <el-row class="header nav">
-    <el-col :span="2" class="logo">
+    <el-col :span="2" class="logo" @click="goHome">
       <el-image :src="logo" fit="scale-down"></el-image>
     </el-col>
     <el-col :span="16">
@@ -119,7 +173,7 @@ function skip(path) {
     </el-col>
     <el-col :span="6">
       <el-row justify="start" align="middle">
-        <el-button @click="pubDemand" type="primary" style="margin-right: 20px;">
+        <el-button v-if="store['user'].identity === 1"  @click="pubDemand" type="primary" style="margin-right: 20px;">
           发布需求
           <el-icon class="el-icon--right">
             <Plus/>
@@ -131,7 +185,12 @@ function skip(path) {
           </el-icon>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item v-for="item in messageData" @click="skip(item.path)" >{{ item.text }}</el-dropdown-item>
+              <el-dropdown-item v-for="item in messageData" @click="skip(item)">
+                <el-badge :value="item.notify" :hidden="item.notify === 0"
+                          :max="10" :show-zero="false">
+                  {{ item.text }}
+                </el-badge>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -139,7 +198,7 @@ function skip(path) {
           <el-avatar @click="login" :size="40" :src="avatar" style="margin-right: 10px;"/>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item v-for="item in userData" @click="skip(item.path)" >{{ item.text }}</el-dropdown-item>
+              <el-dropdown-item v-for="item in userData" @click="skip(item)">{{ item.text }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -182,5 +241,9 @@ function skip(path) {
 .logo {
   width: 100%;
   height: 100%;
+  .el-image{
+    width: 100%;
+    height: 100%;
+  }
 }
 </style>

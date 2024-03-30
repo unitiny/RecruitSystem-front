@@ -1,7 +1,6 @@
 import axios from 'axios'
 
 const baseURL = "http://127.0.0.1:9400/v1"
-
 let request: axios.AxiosInstance = axios.create({
     baseURL: baseURL
 })
@@ -9,7 +8,6 @@ request.defaults.withCredentials = false
 request.defaults.headers.post['Content-Type'] = 'application/json;charset=UTF-8'
 // 允许跨域
 request.defaults.headers.post['Access-Control-Allow-Origin'] = '*'
-request.defaults.headers.token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOjF9.FE_jHtqtU369K48P-EDB8xGHb6Njcnn0oOyeQF0lu5w"
 
 // 添加请求拦截器
 request.interceptors.request.use(function (config) {

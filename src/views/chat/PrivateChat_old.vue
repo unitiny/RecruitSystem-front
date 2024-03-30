@@ -9,6 +9,7 @@ import {getTime, diffDay, getTags, getPaymentWay, getBackTime, getAlias, copy} f
 import {request} from "@/utils/axios";
 import Rate from "@/components/common/Rate.vue"
 
+//数据太散太乱，不好渲染，重构了
 const route = useRoute()
 const store = useGlobalStore()
 const apply = {

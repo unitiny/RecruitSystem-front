@@ -25,6 +25,7 @@ watchEffect(() => visible.value = props.visible)
 const data = ref({
   account: "",
   password: "",
+  smsCode: "",
   loginWay: 0,
   loginLoading: false,
   identity: global.identity.recruiter, // 1招募者 2开发者
@@ -38,7 +39,7 @@ function login() {
 
   let messageOption = {
     showClose: true,
-    inputMsg: i18nText("loginSuccess"),
+    message: i18nText("loginSuccess"),
     type: 'success',
   }
   data.value.loginLoading = true
@@ -48,7 +49,8 @@ function login() {
     data: {
       "username": data.value.account.toString(),
       "password": data.value.password.toString(),
-      "identity": data.value.identity
+      "identity": data.value.identity,
+      "loginCode": parseInt(data.value.smsCode)
     },
   }).then(res => {
     console.log(res)
@@ -59,6 +61,7 @@ function login() {
     let firstLogin = res["firstLogin"]
 
     request.defaults.headers.token = user.token //方便api鉴权
+    console.log(request.defaults.headers.token)
     emits("successHook", firstLogin)
   }).catch(error => {
     console.log(error)
@@ -75,6 +78,21 @@ function changeIdentity() {
       global.identity.developer : global.identity.recruiter;
 }
 
+function getCode() {
+  request({
+    url: loginGroup.loginCode,
+    params: {
+      username: data.value.account
+    }
+  }).catch(err => {
+    ElMessage({
+      showClose: true,
+      message: "发送验证码错误",
+      type: "error"
+    })
+  })
+}
+
 function close() {
   emits("exchange")
 }
@@ -88,12 +106,14 @@ function close() {
     <div class="login-box">
       <el-row justify="space-between">
         <el-col :span="6">
-          <div :class="{'grid-content': true, 'selected': data.loginWay === 0}">
+          <div @click="data.loginWay = 0"
+               :class="{'grid-content': true, 'selected': data.loginWay === 0}">
             {{ i18nGroup("password", "login") }}
           </div>
         </el-col>
         <el-col :span="6">
-          <div :class="{'grid-content': true, 'selected': data.loginWay === 1}">
+          <div @click="data.loginWay = 1"
+               :class="{'grid-content': true, 'selected': data.loginWay === 1}">
             {{ i18nGroup("letter", "login") }}
           </div>
         </el-col>
@@ -106,10 +126,20 @@ function close() {
                     :placeholder="i18nGroup('inputTip', 'account')"/>
         </el-row>
         <el-row justify="center">
-          <el-input v-model="data.password"
+          <el-input v-if="data.loginWay === 0"
+                    v-model="data.password"
                     class="w-50 m-2"
                     size="large"
                     :placeholder="i18nGroup('inputTip', 'password')"/>
+          <el-input v-else-if="data.loginWay === 1"
+                    v-model="data.smsCode"
+                    class="w-50 m-2"
+                    size="large"
+                    :placeholder="i18nGroup('inputTip', 'code')">
+            <template #append>
+              <el-button type="primary" @click="getCode">{{ i18nGroup('get', 'code') }}</el-button>
+            </template>
+          </el-input>
         </el-row>
       </el-space>
       <el-row justify="space-between" style="margin-top: 20px">

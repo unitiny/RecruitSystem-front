@@ -1,20 +1,44 @@
 <script setup lang="ts">
-import {ref} from "vue";
+import {onMounted, ref} from "vue";
 import {request} from "@/utils/axios";
 import {API, demandGroup} from "@/api/api";
 import {useGlobalStore} from "@/store/pinia";
 import {useRouter} from "vue-router"
-import {diffDay, getTags, getPaymentWay} from "@/utils/utils";
+import {diffDay, getTags, getPaymentWay, copy, elMsgOption} from "@/utils/utils";
 import {global} from "@/static/static";
 import {Delete} from "@element-plus/icons-vue";
+import Demand from "@/components/demand/Demand.vue";
+import {Action} from "element-plus";
 
 const store = useGlobalStore()
 const router = useRouter()
 
 const avatar = global.path.static + '/img/avatar.jpg'
+const contentRef = ref()
+const scrollerHeight = ref("")
+
+const demandCtl = ref({
+  checkDemand: [],
+  checkAll: false,
+  operateVisible: {}
+})
 const demandList = ref([])
 const demandTotal = ref(-1)
-const demandRequest = {
+const demandRequest = ref({
+  start: 0,
+  limit: 10,
+  order: "",
+  uid: store["user"].id,
+  typ: 0,
+  duration: 0,
+  remuneration: 0,
+  status: 0,
+  recruitNum: 0,
+  requireTag: 0,
+  tag: 0,
+  searchVal: "",
+})
+const demandRequestCopy = {
   start: 0,
   limit: 10,
   order: "",
@@ -29,19 +53,121 @@ const demandRequest = {
   searchVal: "",
 }
 
+const searchData = ref({
+  searchVal: "",
+  optionList: [
+    {
+      text: "招募类型",
+      value: "",
+      options: [
+        {
+          value: 1,
+          label: "开发者"
+        },
+        {
+          value: 2,
+          label: "合伙人"
+        },
+      ]
+    },
+    {
+      text: "开发周期",
+      value: "",
+      options: [
+        {
+          value: 1,
+          label: "3天内"
+        },
+        {
+          value: 2,
+          label: "3-7天"
+        },
+        {
+          value: 3,
+          label: "两周"
+        },
+        {
+          value: 4,
+          label: "一个月"
+        },
+      ]
+    },
+    {
+      text: "需求状态",
+      value: "",
+      options: [
+        {
+          value: 1,
+          label: "招募中"
+        },
+        {
+          value: 2,
+          label: "开发中"
+        },
+        {
+          value: 3,
+          label: "已完结"
+        },
+      ]
+    },
+    {
+      text: "需求标签",
+      value: "",
+      options: [
+        {
+          value: 1,
+          label: "分期付款"
+        },
+        {
+          value: 2,
+          label: "已付款"
+        },
+      ]
+    }]
+})
+
+const demandOpts = ref([
+  {
+    text: "更新进度",
+    path: "/userdemand/arrangeplan",
+  }
+])
+
 function getDemandList() {
   if (demandList.value.length === demandTotal.value) {
     return
   }
   request({
     url: demandGroup.list,
-    params: demandRequest
+    params: demandRequest.value
   }).then(res => {
     demandList.value.push(...res["list"])
-    demandTotal.value = ref["total"]
-    console.log(demandList.value)
-    demandRequest.start += demandRequest.limit
+    demandTotal.value = res["total"]
+    console.log(res)
+    demandRequest.value.start += demandRequest.value.limit
   })
+}
+
+function searchDemandList() {
+  demandList.value = []
+  demandRequest.value.start = 0
+  demandRequest.value.searchVal = searchData.value.searchVal
+  demandRequest.value.typ = parseInt(searchData.value.optionList[0].value)
+  demandRequest.value.duration = parseInt(searchData.value.optionList[1].value)
+  demandRequest.value.status = parseInt(searchData.value.optionList[2].value)
+  demandRequest.value.tag = parseInt(searchData.value.optionList[3].value)
+  console.log(searchData.value, demandRequest)
+  getDemandList()
+}
+
+function resetSearch() {
+  demandRequest.value = copy(demandRequestCopy)
+  demandTotal.value = -1
+  searchData.value.searchVal = ""
+  for (const item of searchData.value.optionList) {
+    item.value = ""
+  }
+  getDemandList()
 }
 
 function editDemand(did) {
@@ -53,7 +179,12 @@ function editDemand(did) {
   })
 }
 
-function delDemand(did) {
+function delDemand(did: number) {
+  let msg = {
+    showClose: true,
+    message: "删除成功",
+    type: "success"
+  }
   request({
     url: demandGroup.del,
     method: API.DELETE,
@@ -62,97 +193,315 @@ function delDemand(did) {
     }
   }).then(res => {
     demandList.value = demandList.value.filter(d => d.id !== did)
+    demandTotal.value = demandList.value.length
+  }).catch(err => {
+    msg.message = err
+  }).finally(() => {
+    ElMessage(msg)
   })
 }
+
+function delList() {
+  request({
+    url: demandGroup.delList,
+    method: API.DELETE,
+    params: {
+      didArr: demandCtl.value.checkDemand.join(",")
+    }
+  }).then(res => {
+    ElMessage(elMsgOption("删除成功"))
+    demandList.value = demandList.value.filter(function (item) {
+      return demandCtl.value.checkDemand.indexOf(item.id) === -1
+    })
+    demandTotal.value = demandList.value.length
+    demandCtl.value.checkDemand = []
+  }).catch(err => {
+    ElMessage(elMsgOption("删除失败", "error"))
+  })
+}
+
+function skip(path, query) {
+  router.push({
+    name: path,
+    query: query
+  })
+}
+
+function getScrollerHeight() {
+  scrollerHeight.value = `${contentRef.value.offsetHeight * 0.88}px`
+}
+
+function checkAllDemand(val: boolean) {
+  demandCtl.value.checkDemand = []
+  if (!val) {
+    return
+  }
+
+  for (const item of demandList.value) {
+    demandCtl.value.checkDemand.push(item.id)
+  }
+}
+
+function showDelAllTip() {
+  ElMessageBox.alert('是否要删除所选项', '提示', {
+    // if you want to disable its autofocus
+    // autofocus: false,
+    confirmButtonText: 'OK',
+    callback: (action: Action) => {
+      if (action === "confirm") {
+        delList()
+      }
+    },
+  })
+}
+
+function showDelTip(did) {
+  ElMessageBox.alert('是否要删除所选项', '提示', {
+    // if you want to disable its autofocus
+    // autofocus: false,
+    confirmButtonText: 'OK',
+    callback: (action: Action) => {
+      if (action === "confirm") {
+        delDemand(did)
+      }
+    },
+  })
+}
+
+function operateVisible(did, visible) {
+  demandCtl.value.operateVisible[did] = visible
+}
+
+onMounted(() => {
+  getScrollerHeight()
+})
 </script>
 
 <template>
-  <el-row class="container content">
-    <el-row v-infinite-scroll="getDemandList" infinite-scroll-immediate="true" class="demand-list">
-      <el-row v-for="item in demandList" :key="item.id" :span="24" class="board">
-        <el-col class="body">
-          <el-row :span="24" style="padding: 10px;">
-            <el-col :span="20">
-              <el-row class="flex-ai-center">
-                <el-col :span="6">{{ item.name }}</el-col>
-                <el-col :span="6" class="flex-ai-center">
-                  <b>1/{{ item.recruitNum }}</b>&nbsp;
-                  <el-icon>
-                    <UserFilled/>
-                  </el-icon>
-                </el-col>
-                <el-col :span="6" v-if="item.type === 2">
-                  <el-tag>合伙人</el-tag>
-                </el-col>
-              </el-row>
-              <el-row style="margin-top: 10px;">
-                <el-col :span="4" style="margin: 0 0 10px 0;">
-                  <el-tag type="info" style="color: black">￥{{ item.remuneration }}</el-tag>
-                </el-col>
-                <el-col :span="4" style="margin: 0 0 10px 0;">
-                  <el-tag type="info" style="color: black">{{ diffDay(item.start, item.end) }}天</el-tag>
-                </el-col>
-                <el-col :span="4" style="margin: 0 0 10px 0;" v-if="item.paymentWay !== 0">
-                  <el-tag type="info" style="color: black">{{ getPaymentWay(item.paymentWay) }}</el-tag>
-                </el-col>
-              </el-row>
-            </el-col>
-            <el-col :span="4">
-              <el-avatar :size="40" :src="avatar" style="margin-right: 10px;"/>
-            </el-col>
-          </el-row>
-          <el-row>
-            {{ item.demand }}
-          </el-row>
-        </el-col>
-        <el-row class="footer flex-ai-center">
-          <span v-for="item1 in getTags(item.requireTags)" style="margin-right: 10px;">{{ item1 }}</span>
-          <el-icon @click="editDemand(item.id)">
-            <EditPen/>
-          </el-icon>
-          &nbsp;
-          <el-popconfirm @confirm="delDemand(item.id)" title="Are you sure to delete this?">
-            <template #reference>
-              <el-icon>
-                <Delete/>
+  <el-row class="demands-main">
+    <el-col :span="4" class="sidebar column">
+      <el-card class="column row sidebar-card">
+        <div>筛选</div>
+        <div>
+          <el-input
+              v-model="searchData.searchVal"
+              @change="searchDemandList"
+              placeholder="Type something">
+            <template #prefix>
+              <el-icon class="el-input__icon">
+                <search/>
               </el-icon>
             </template>
-          </el-popconfirm>
+          </el-input>
+        </div>
+        <div v-for="item in searchData.optionList">
+          <el-select
+              :collapse-tags-tooltip="true"
+              v-model="item.value"
+              @change="searchDemandList"
+              class="m-2"
+              :placeholder="item.text"
+              clearable
+              size="default"
+              style="width: 100%;">
+            <el-option
+                v-for="item1 in item.options"
+                :key="item1.value"
+                :label="item1.label"
+                :value="item1.value"
+            />
+          </el-select>
+        </div>
+        <div>
+          <el-button @click="resetSearch" type="primary" style="width: 100%;">清空条件</el-button>
+        </div>
+      </el-card>
+    </el-col>
+    <el-col :span="18" class="demands-content column">
+      <div ref="contentRef" style="height: 100%;width: 100%;">
+        <el-row class="row">
+          <el-card class="header">
+            <span>
+              <el-checkbox
+                  size="large"
+                  v-model="demandCtl.checkAll"
+                  :indeterminate="demandCtl.checkDemand.length > 0 &&
+                demandCtl.checkDemand.length !== demandList.length"
+                  @change="checkAllDemand"></el-checkbox>
+              <span>&nbsp;全选</span>
+            </span>
+            <span><el-button type="danger" @click="showDelAllTip">全部删除</el-button></span>
+          </el-card>
         </el-row>
-      </el-row>
-    </el-row>
+        <el-row v-if="demandList.length <= 0 && demandTotal === 0"
+                class="row column">
+          <el-empty description="暂无数据" style="width: 100%;"/>
+        </el-row>
+        <el-row v-else v-infinite-scroll="getDemandList"
+                infinite-scroll-immediate="true"
+                :style="{height: scrollerHeight}"
+                class="demand-list">
+          <el-checkbox-group
+              class="check-group"
+              v-model="demandCtl.checkDemand">
+            <div v-for="item in demandList"
+                 :key="item.id" class="row demand-block">
+              <el-checkbox size="large"
+                           :label="item?.id"
+                           :value="item?.id"></el-checkbox>
+              <Demand
+                  @mouseover="operateVisible(item?.id, true)"
+                  @mouseleave="operateVisible(item?.id, false)"
+                  :demand="item"
+                  class="demand">
+                <transition name="slide-right">
+                  <div v-if="demandCtl.operateVisible[item?.id]" class="slide-item">
+                    <div class="demand-operate" @click.stop="">
+                      <span @click.stop="editDemand(item?.id)">编辑</span>
+                      <span @click.stop="showDelTip(item?.id)">删除</span>
+                    </div>
+                    <div class="tri"></div>
+                  </div>
+                </transition>
+              </Demand>
+            </div>
+          </el-checkbox-group>
+        </el-row>
+      </div>
+    </el-col>
   </el-row>
 </template>
 
 <style scoped lang="scss">
-.main {
-  justify-content: center;
+.demands-main {
+  padding: 20px 40px;
+  height: 92%;
+  width: 100%;
+
+  .sidebar {
+    .sidebar-card {
+      display: flex;
+      justify-content: center;
+      align-items: start;
+
+      div {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+    }
+  }
+
+  .demands-content {
+    padding-left: 15px;
+
+    .header {
+      width: 100%;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: start;
+      align-items: center;
+
+      span {
+        margin-right: 10px;
+      }
+    }
+
+    .demand-list {
+      //max-height: 700px;
+      .check-group {
+        width: 100%;
+
+        .demand-block {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+
+          .demand {
+            width: 95%;
+            color: black;
+
+            .demand-operate {
+              display: flex !important;
+              background: #a3d4d7 !important;
+              color: black;
+              justify-content: space-around;
+              align-items: center;
+              padding-left: 20px;
+              width: 100%;
+              height: 100%;
+
+              span {
+                width: 60px;
+                font-size: 16px;
+              }
+            }
+
+            .tri {
+              position: absolute;
+              left: -10%;
+              top: 0;
+              height: 100%;
+              width: 20%;
+              background: $demand-footer;
+              transform: skewX(-30deg);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
-.board {
-  border-radius: 10px;
-  border: solid 1px #2f2f2f;
-  width: 80%;
-  height: 220px;
-  margin: 20px 0;
+::-webkit-scrollbar {
+  width: 5px;
+}
 
-  .body {
-    padding: 20px;
-  }
+::-webkit-scrollbar-thumb {
+  display: none;
+  position: absolute;
+  margin-left: 46px;
+  background-color: #c5c5c5;
+  border-radius: 3px;
+}
 
-  .footer {
-    width: 100%;
-    padding: 10px 20px;
-    background: #cbedef;
-    border-radius: 0 0 5px 5px;
-  }
+:deep(.el-checkbox__label) {
+  display: none;
+}
+
+.el-checkbox__label {
+  width: 100%;
 }
 
 .demand-list {
   width: 100%;
-  height: 400px;
+  //height: 400px;
   overflow: auto;
   list-style: none;
-  justify-content: center;
+  justify-content: start;
+}
+
+.slide-item {
+  position: absolute;
+  right: 0;
+  width: 50%;
+  height: 100%;
+}
+
+.slide-right-enter-active {
+  transition: all 0.7s ease;
+  transform: translateX(100%);
+}
+
+.slide-right-leave-active {
+  transition: all 0.7s ease;
+  transform: translateX(0);
+}
+
+.slide-right-leave-to {
+  transform: translateX(100%);
+}
+
+.slide-right-enter-to {
+  transform: translateX(0);
 }
 </style>

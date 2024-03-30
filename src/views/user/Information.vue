@@ -2,10 +2,15 @@
 import {watch, ref} from "vue"
 import {useGlobalStore} from "@/store/pinia";
 import {getSkills} from "@/utils/utils";
+import {global} from "@/static/static";
 import Mask from "@/components/common/Mask.vue"
 import PersonInformation from "@/components/PersonInformation.vue"
 
+const background = global.path.static + "/img/background.png"
+const avatar = global.path.static + "/img/avatar.jpg"
 const store = useGlobalStore()
+
+
 const user = ref({})
 const editVisible = ref(false)
 
@@ -34,60 +39,95 @@ function parseSkills(user) {
 </script>
 
 <template>
-  <el-row class="container row">
-    <el-card shadow="always" class="card box-card">
-      <el-row class="row">
-        <el-col :span="6">姓名</el-col>
-        <el-col :span="2"></el-col>
-        <el-col :span="12">{{ user.nickname }}</el-col>
-      </el-row>
-      <el-row class="row">
-        <el-col :span="6">邮箱</el-col>
-        <el-col :span="2"></el-col>
-        <el-col :span="12">{{ user.email }}</el-col>
-      </el-row>
-      <el-row class="row">
-        <el-col :span="6">手机号</el-col>
-        <el-col :span="2"></el-col>
-        <el-col :span="12">{{ user.phone }}</el-col>
-      </el-row>
-      <el-row class="row">
-        <el-col :span="6">个性签名</el-col>
-        <el-col :span="2"></el-col>
-        <el-col :span="12">{{ user.signature }}</el-col>
-      </el-row>
-      <el-row class="row">
-        <el-col :span="6">描述</el-col>
-        <el-col :span="2"></el-col>
-        <el-col :span="12">{{ user.description }}</el-col>
-      </el-row>
-      <el-row class="row">
-        <el-col :span="6">职位</el-col>
-        <el-col :span="2"></el-col>
-        <el-col :span="12">
-          <span v-for="item in user.topTags" style="margin: 5px;">{{ item }}</span>
-        </el-col>
-      </el-row>
-      <el-row class="row">
-        <el-col :span="6">技术</el-col>
-        <el-col :span="2"></el-col>
-        <el-col :span="12">
-          <span v-for="item in user.tags" style="margin: 5px;">{{ item }}</span>
-        </el-col>
-      </el-row>
-    </el-card>
-    <el-button @click="maskTick">
-      <el-icon>
-        <Edit/>
-      </el-icon>
-    </el-button>
-  </el-row>
-  <Mask @nextTick="maskTick" :visible="editVisible">
-    <PersonInformation></PersonInformation>
-  </Mask>
+  <div class="info-main">
+    <div class="background">
+      <el-image class="img" :src="background" :fit="'fill'"></el-image>
+    </div>
+    <el-row class="container row">
+      <el-card shadow="always" class="card box-card">
+        <el-row class="row header" :gutter="50">
+          <el-col :span="4" class="flex-center">
+            <el-avatar :size="100" :src="avatar"/>
+          </el-col>
+          <el-col :span="20">
+            <div class="name">
+              <span>{{ user.username }} &nbsp; {{ user.nickname }}</span>
+              <span>
+                <el-button @click="maskTick" type="primary">
+                  编辑资料
+                 <el-icon class="el-icon--right">
+                   <Edit/>
+                 </el-icon>
+               </el-button>
+              </span>
+            </div>
+            <div>
+              {{ user.signature }}
+            </div>
+          </el-col>
+        </el-row>
+        <el-divider/>
+        <el-row class="row span">
+          <el-icon>
+            <Message/>
+          </el-icon>
+          <el-col :span="12">{{ user.email }}</el-col>
+        </el-row>
+        <el-divider/>
+        <el-row class="row span">
+          <el-icon>
+            <EditPen/>
+          </el-icon>
+          <el-col :span="12">{{ user.description }}</el-col>
+        </el-row>
+        <el-divider/>
+        <el-row class="row span">
+          <el-icon>
+            <Collection/>
+          </el-icon>
+          <el-col :span="12">
+            <span v-for="item in user.topTags" style="margin: 5px;">{{ item }}</span>
+          </el-col>
+        </el-row>
+        <el-divider/>
+        <el-row class="row span">
+          <el-icon>
+            <Postcard/>
+          </el-icon>
+          <el-col :span="12">
+            <span v-for="item in user.tags" style="margin: 5px;">{{ item }}</span>
+          </el-col>
+        </el-row>
+      </el-card>
+    </el-row>
+    <Mask @nextTick="maskTick" :visible="editVisible">
+      <PersonInformation @cancel="maskTick"></PersonInformation>
+    </Mask>
+  </div>
+
 </template>
 
 <style scoped lang="scss">
+.info-main {
+  position: relative;
+  width: 100%;
+  height: 100%;
+
+  .background {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    .img {
+      width: 100%;
+      height: 100%;
+      //filter: blur(1px);
+    }
+  }
+}
+
 .container {
   display: flex;
   flex-direction: column;
@@ -96,6 +136,32 @@ function parseSkills(user) {
 }
 
 .card {
-  min-width: 600px;
+  min-width: 1000px;
+  margin-top: 60px;
+  font-size: 14px;
+
+  .header {
+    font-size: 20px;
+
+    .name {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  }
+
+  .span {
+    font-size: 18px;
+    display: flex;
+    justify-content: start;
+    align-items: center;
+    //height: 30px;
+    //border-bottom: 1px solid #b2b2b2;
+    //padding: 10px;
+    i {
+      font-size: 25px;
+      margin-right: 12px;
+    }
+  }
 }
 </style>

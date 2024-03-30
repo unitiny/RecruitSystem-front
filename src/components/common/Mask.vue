@@ -36,7 +36,7 @@ function closeMask() {
   left: 0;
   font-size: 14px;
   background: rgba(0, 0, 0, .5);
-  z-index: 1;
+  z-index: 10;
   -webkit-box-align: center;
   -ms-flex-align: center;
   display: flex;

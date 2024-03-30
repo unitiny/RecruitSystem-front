@@ -5,7 +5,7 @@ import PubStep2 from "./Pub_step2.vue"
 import PubStep3 from "./Pub_step3.vue"
 import PubFinish from "./Pub_finish.vue"
 import {request} from "@/utils/axios";
-import {API, demandGroup} from "@/api/api";
+import {API, demandGroup, PutDemand} from "@/api/api";
 import {useGlobalStore} from "@/store/pinia";
 import {useRoute, useRouter} from "vue-router"
 import {ElMessage} from "element-plus";
@@ -18,12 +18,12 @@ const stepData = ref({
   hasPub: false,
   active: 1,
   list: [
+    // {
+    //   title: "选择身份",
+    //   description: ""
+    // },
     {
-      title: "身份选择",
-      description: ""
-    },
-    {
-      title: "需求填写",
+      title: "填写需求",
       description: ""
     },
     {
@@ -41,6 +41,8 @@ const pubStep1 = ref()
 const pubStep2 = ref()
 const pubStep3 = ref()
 const pubFinish = ref()
+const formCardRef = ref()
+const scrollerHeight = ref("550px")
 
 function updateDemand(dm) {
   demand.value = dm
@@ -49,13 +51,13 @@ function updateDemand(dm) {
 function changeDemand() {
   switch (stepData.value.active) {
     case 1:
-      pubStep1.value.updateDemand(demand)
-      break
-    case 2:
       pubStep2.value.updateDemand(demand)
       break
-    case 3:
+    case 2:
       pubStep3.value.updateDemand(demand)
+      break
+    case 3:
+      pubFinish.value.updateDemand(demand)
       break
     case 4:
       pubFinish.value.updateDemand(demand)
@@ -66,15 +68,11 @@ function changeDemand() {
 function putDemand() {
   console.log(demand.value)
   demand.value.uid = store["user"].id
-  request({
-    url: demandGroup.put,
-    method: API.PUT,
-    data: demand.value
-  }).catch(err => {
+  PutDemand(demand.value).catch(err => {
     console.log(err)
     ElMessage({
       showClose: true,
-      inputMsg: "更新需求错误",
+      message: "更新需求错误",
       type: 'error',
     })
   })
@@ -121,9 +119,9 @@ function getDemand(did) {
   })
 }
 
-function changeStep(num: Number) {
+function changeStep(num: number) {
   let nextActive = stepData.value.active + num
-  if (nextActive >= 1 && nextActive < 5) {
+  if (nextActive >= 1 && nextActive < 4) {
     if (num > 0) {
       changeDemand()
     }
@@ -137,63 +135,81 @@ function changeStep(num: Number) {
   }
 }
 
-function finish() {
-  putDemand()
-  router.push("/")
-}
-
-function payIntend() {
-  router.push("/dev/dev")
-}
-
 onMounted(() => {
   if (route.query.did) {
     stepData.value.hasPub = true
     getDemand(route.query.did)
+  } else if (stepData.value.active === 1 && !stepData.value.hasPub) {
+    pubDemand()
   }
+
+  scrollerHeight.value = `${formCardRef.value.offsetHeight * 0.9}px`
 })
 </script>
 
 <template>
-  <el-row class="container" justify="start">
-    <el-row class="row" justify="center">
-      <el-steps style="width: 100%" :active="stepData.active" align-center>
+  <el-row class="pub-container" justify="start">
+    <el-col :span="3" class="steps">
+      <el-steps class="column" direction="vertical" :active="stepData.active" align-center>
         <el-step v-for="item in stepData.list" :title="item.title" :description="item.description"/>
       </el-steps>
-    </el-row>
-
-    <el-row class="row">
-      <el-scrollbar max-height="400px" style="width: 100%">
-        <PubStep1 v-if="stepData.active === 1" ref="pubStep1" :demand="demand"></PubStep1>
-        <PubStep2 v-else-if="stepData.active === 2" ref="pubStep2" :demand="demand"></PubStep2>
-        <PubStep3 v-else-if="stepData.active === 3" ref="pubStep3" :demand="demand"></PubStep3>
-        <PubFinish v-else :demand="demand" ref="pubFinish"></PubFinish>
-      </el-scrollbar>
-    </el-row>
-
-    <el-row v-if="stepData.active <= 4" class="row" justify="center" :gutter="10">
-      <el-col :span="6" align="middle">
-        <el-button @click="changeStep(-1)" type="primary" size="large">上一步</el-button>
-      </el-col>
-      <el-col :span="6" align="middle">
-        <el-button @click="changeStep(1)" type="primary" size="large">下一步</el-button>
-      </el-col>
-    </el-row>
-    <el-row class="row" justify="center" :gutter="10">
-      <el-col :span="6" align="middle">
-        <el-button @click="payIntend" type="primary" size="large">预支付</el-button>
-      </el-col>
-      <el-col :span="6" align="middle">
-        <el-button @click="finish" type="primary" size="large">发布</el-button>
-      </el-col>
-    </el-row>
+    </el-col>
+    <el-col :span="14" class="column">
+      <div ref="formCardRef" class="column">
+        <el-card shadow="never" class="column">
+          <el-row class="row">
+            <el-scrollbar :max-height="scrollerHeight" style="width: 100%">
+              <!--            <PubStep1 v-if="stepData.active === 1" ref="pubStep1" :demand="demand"></PubStep1>-->
+              <PubStep2 v-if="stepData.active === 1" ref="pubStep2" :demand="demand"></PubStep2>
+              <PubStep3 v-else-if="stepData.active === 2" ref="pubStep3" :demand="demand"></PubStep3>
+              <PubFinish v-else :demand="demand" ref="pubFinish"></PubFinish>
+            </el-scrollbar>
+          </el-row>
+        </el-card>
+      </div>
+    </el-col>
+    <el-col :span="4" class="column">
+      <el-card shadow="never" class="column">
+        <el-row v-if="stepData.active <= stepData.list.length" class="row" justify="center" :gutter="10">
+          <el-col :span="20" align="middle">
+            <el-button @click="changeStep(-1)" class="row btn" type="primary" size="large">上一步</el-button>
+          </el-col>
+          <el-col :span="20" align="middle">
+            <el-button @click="changeStep(1)" class="row btn" type="primary" size="large">下一步</el-button>
+          </el-col>
+        </el-row>
+      </el-card>
+    </el-col>
   </el-row>
 </template>
 
 <style scoped lang="scss">
+.pub-container {
+  position: relative;
+  width: 100%;
+  height: 90%;
+  padding: 20px 0;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  color: black;
+
+  .steps {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 0;
+  }
+}
+
 .header {
   display: inline-block;
   position: absolute;
   top: 20px;
+}
+
+.btn {
+  margin: 10px 10px;
 }
 </style>

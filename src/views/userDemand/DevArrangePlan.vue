@@ -2,7 +2,7 @@
 import {onBeforeMount, onMounted, ref} from "vue"
 import {API, GetDemand, PutDemand, userDemandGroup} from "@/api/api";
 import {useRoute} from "vue-router";
-import {getAliasArr} from "@/utils/utils";
+import {copy, getAliasArr, getDemandPlan} from "@/utils/utils";
 import {request} from "@/utils/axios";
 import {useGlobalStore} from "@/store/pinia";
 import {ElMessage} from "element-plus";
@@ -40,11 +40,10 @@ function getUserDemand() {
     }
   }).then(res => {
     userDemand.value = res
-    userDemand.value.plan = JSON.parse(userDemand.value.plan)
+    userDemand.value.plan = getDemandPlan(userDemand.value.plan)
     console.log(userDemand.value)
   })
 }
-
 
 function changePlan(way) {
   if (way > 0) {
@@ -74,19 +73,24 @@ function changeUserPlan(way) {
 
 function savePlan() {
   try {
-    PutDemand(demand.value)
-    let item = JSON.parse(JSON.stringify(userDemand.value))
+    PutDemand(copy(demand.value))
+    let item = copy(userDemand.value)
     item.plan = JSON.stringify(item.plan)
     request({
       url: userDemandGroup.put,
       method: API.PUT,
       data: item
     })
+    ElMessage({
+      showClose: true,
+      message: "保存成功",
+      type: 'success',
+    })
   } catch (err) {
     console.log(err)
     ElMessage({
       showClose: true,
-      inputMsg: "保存失败",
+      message: "保存失败",
       type: 'error',
     })
   }
@@ -95,7 +99,7 @@ function savePlan() {
 onBeforeMount(() => {
   GetDemand(route.query.did).then(res => {
     demand.value = res
-    demand.value.plan = JSON.parse(res["plan"])
+    demand.value.plan = getDemandPlan(res["plan"])
 
     let aliasArr = getAliasArr(demand.value.recruitNum)
     for (let i = 0; i < aliasArr.length; i++) {

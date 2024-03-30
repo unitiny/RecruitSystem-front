@@ -33,7 +33,7 @@ function register() {
   if (data.value.password !== data.value.repeatPassword) {
     ElMessage({
       showClose: true,
-      inputMsg: i18nText("notEqualPassword"),
+      message: i18nText("notEqualPassword"),
       type: 'error',
     })
     return
@@ -41,7 +41,7 @@ function register() {
 
   let messageOption = {
     showClose: true,
-    inputMsg: i18nText("registerSuccess"),
+    message: i18nText("registerSuccess"),
     type: 'success',
   }
   request({
@@ -51,7 +51,7 @@ function register() {
       "username": data.value.account,
       "password": data.value.password,
       "identity": data.value.identity,
-      "code": parseInt(data.value.code)
+      "registerCode": parseInt(data.value.code)
     }
   }).then(res => {
     //跳转登录
@@ -66,7 +66,7 @@ function register() {
 
 function getCode() {
   request({
-    url: loginGroup.code,
+    url: loginGroup.registerCode,
     method: API.GET,
     params: {
       "username": data.value.account
