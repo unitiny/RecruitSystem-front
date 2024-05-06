@@ -60,7 +60,7 @@ function demandDetail(did) {
           <el-row class="flex-ai-center">
             <el-col :span="6">{{ item.name }}</el-col>
             <el-col :span="6" class="flex-ai-center">
-              <b>1/{{ item.recruitNum }}</b>&nbsp;
+              <b>{{ item.hasRecruitNum }}/{{ item.recruitNum }}</b>&nbsp;
               <el-icon>
                 <UserFilled/>
               </el-icon>

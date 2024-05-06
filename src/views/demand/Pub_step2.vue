@@ -5,6 +5,7 @@ import {demandGroup} from "@/api/api";
 import type {UploadFile, UploadFiles, UploadProps, UploadUserFile} from 'element-plus'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {useGlobalStore} from "@/store/pinia";
+import {checkValue, elMsgOption} from "@/utils/utils";
 
 const emits = defineEmits(["updateDemand"])
 const props = defineProps({
@@ -140,6 +141,15 @@ function updateFormData(dm) {
   formData.value.materialPath = dm.materialPath
 }
 
+function check() {
+  let b = checkValue(formData.value.name, formData.value.demand)
+  if (!b) {
+    ElMessage(elMsgOption("请输入需求名称和概述", "warning"))
+    return false
+  }
+  return true
+}
+
 watch(
     () => props.demand,
     (value, oldValue, onCleanup) => {
@@ -156,20 +166,22 @@ onMounted(() => {
   formData.value.demand = demand.value.demand
   formData.value.materialPath = demand.value.materialPath
 })
-defineExpose({updateDemand})
+
+
+defineExpose({updateDemand, check})
 </script>
 
 <template>
   <el-row class="row content" justify="center">
-    <el-row class="row inputItem">
-      <el-col :span="3">发布身份：</el-col>
-      <el-col :span="14">
-        <el-radio-group v-model="formData.type">
-          <el-radio :label="1" :value="1" size="large" border>雇主</el-radio>
-          <el-radio :label="2" :value="2" size="large" border>合伙人</el-radio>
-        </el-radio-group>
-      </el-col>
-    </el-row>
+    <!--    <el-row class="row inputItem">-->
+    <!--      <el-col :span="3">发布身份：</el-col>-->
+    <!--      <el-col :span="14">-->
+    <!--        <el-radio-group v-model="formData.type">-->
+    <!--          <el-radio :label="1" :value="1" size="large" border>雇主</el-radio>-->
+    <!--          <el-radio :label="2" :value="2" size="large" border>合伙人</el-radio>-->
+    <!--        </el-radio-group>-->
+    <!--      </el-col>-->
+    <!--    </el-row>-->
     <el-row class="row inputItem">
       <el-col :span="3">需求名称：</el-col>
       <el-col :span="20">
@@ -211,7 +223,9 @@ defineExpose({updateDemand})
             :before-remove="beforeRemove"
             :limit="3"
             :on-exceed="handleExceed">
-          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+          <el-icon class="el-icon--upload">
+            <upload-filled/>
+          </el-icon>
           <div class="el-upload__text">
             拖拽文件到此或者 <em>点击上传</em>
           </div>

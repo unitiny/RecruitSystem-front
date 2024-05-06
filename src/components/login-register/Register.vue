@@ -4,7 +4,7 @@ import {ElMessage} from 'element-plus'
 import {API, loginGroup} from '@/api/api'
 import {request} from '@/utils/axios'
 import {i18nText, i18nGroup} from '@/utils/i18n'
-import {errorText} from "@/utils/utils"
+import {checkValue, elMsgOption, errorText} from "@/utils/utils"
 import {global} from "@/static/static";
 
 const emits = defineEmits<{
@@ -17,6 +17,10 @@ const props = defineProps({
   }
 })
 
+const roleImg = {
+  boss: global.path.static + "/img/boss.jpg",
+  developer: global.path.static + "/img/developer.jpg"
+}
 const visible = ref(false)
 watchEffect(() => visible.value = props.visible)
 
@@ -30,6 +34,11 @@ const data = ref({
 })
 
 function register() {
+  if (!checkValue(data.value.account, data.value.password, data.value.repeatPassword, data.value.code)) {
+    ElMessage(elMsgOption("请填写完整信息", "warning"))
+    return
+  }
+
   if (data.value.password !== data.value.repeatPassword) {
     ElMessage({
       showClose: true,
@@ -82,8 +91,14 @@ function changeIdentity() {
 
 <template>
   <div v-if="visible" class="login-main">
-    <div class="login-identity" @click="changeIdentity">
-      {{ data.identity === 1 ? i18nText("recruiter") : i18nText("developer") }}
+    <div class="login-identity flex-center flex-col" @click="changeIdentity">
+      <el-row class="row">
+        <el-image fit="scale-down"
+                  :src="data.identity === 1 ? roleImg.boss : roleImg.developer"></el-image>
+      </el-row>
+      <el-row>
+        {{ data.identity === 1 ? i18nText("recruiter") : i18nText("developer") }}
+      </el-row>
     </div>
     <div class="login-box">
       <el-row justify="space-between">
@@ -148,7 +163,8 @@ function changeIdentity() {
 
 .login-identity {
   width: 35%;
-  @include flex(row, center, center);
+  padding: 10px;
+  //@include flex(row, center, center);
 }
 
 .login-box {

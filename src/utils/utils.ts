@@ -1,3 +1,5 @@
+import {global} from "@/static/static";
+
 function errorText(error, defaultError: string = ""): string {
     if (error["error"] !== undefined && error["error"] !== "") {
         return error["error"]
@@ -5,7 +7,7 @@ function errorText(error, defaultError: string = ""): string {
     return defaultError
 }
 
-function diffDay(start: string, end: string) {
+function diffDay(start: string, end: string): number {
     if (start === "" || end === "") {
         return 0
     }
@@ -14,6 +16,14 @@ function diffDay(start: string, end: string) {
     let endDay = new Date(end)
     const diffTime = Math.abs(endDay - startDay);
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
+function getAvatar(store) {
+    return "D:/GOPATH/src/ItemArea/PersonProject/RecruitSystem/store/avatar/avatar.jpg"
+    if(store && store["user"].avatar) {
+        return store["user"].avatar
+    }
+    return global.path.static + '/img/avatar.jpg'
 }
 
 function getDate(s: string): string {
@@ -69,7 +79,11 @@ function getTags(tags) {
 }
 
 function getMoney(fee) {
-    return (fee / 100).toFixed(2)
+    return (fee / 100).toFixed(0)
+}
+
+function setMoney(fee) {
+    return fee.toFixed(2) * 100
 }
 
 function formatMoney(fee: number): string {
@@ -112,11 +126,14 @@ function copy(obj) {
     return JSON.parse(JSON.stringify(obj))
 }
 
-function getDemandPlan(plan: string) {
-    if (plan && plan !== "") {
-        let res = JSON.parse(plan)
-        if(typeof res === "string") {
-            return getDemandPlan(res)
+function deepJSONParse(text) {
+    if (typeof text !== "string") {
+        return text
+    }
+    if (text && text !== "") {
+        let res = JSON.parse(text)
+        if (typeof res === "string") {
+            return deepJSONParse(res)
         }
         return res
     }
@@ -161,11 +178,41 @@ function elMsgOption(msg: string, type?: string) {
     }
 }
 
+function getChatID(a: number, b: number, did: number) {
+    if (a < b) {
+        return `${a}-${b}-${did}`
+    }
+    return `${b}-${a}-${did}`
+}
+
+function getFileName(path: string) {
+    if (path) {
+        let parts = path.split("/");
+        return parts[parts.length - 1]
+    }
+    return ""
+}
+
+function checkValue(...values) {
+    for (let i = 0; i < values.length; i++) {
+        let type = typeof values[i]
+        if(type === "number" && !values[i]) {
+            return false
+        } else if(type === "string" && !values[i]) {
+            return false
+        } else if(type === "object" && JSON.stringify(values[i]) === "{}") {
+            return false
+        }
+    }
+    return true
+}
+
 export {
     errorText, diffDay, getPaymentWay,
-    getTags, getMoney, getSkills,
+    getTags, getMoney, setMoney, formatMoney, getSkills,
     getDate, getTime, getRandomNum,
-    getAliasArr, getAlias, copy, getDemandPlan,
+    getAliasArr, getAlias, copy, deepJSONParse,
     getBackTime, getRandomID, checkIfImage,
-    checkIfZip, elMsgOption
+    checkIfZip, elMsgOption, getChatID, getFileName,
+    getAvatar, checkValue
 }

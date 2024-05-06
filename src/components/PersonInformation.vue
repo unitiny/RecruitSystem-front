@@ -55,6 +55,7 @@ import UploadAvatar from "@/components/common/UploadAvatar.vue"
 import {request} from "@/utils/axios";
 import {API, userGroup} from "@/api/api";
 import {useGlobalStore} from "@/store/pinia";
+import {elMsgOption} from "@/utils/utils";
 
 interface RuleForm {
   name: string
@@ -78,20 +79,20 @@ const ruleForm = reactive<RuleForm>({
 
 const rules = reactive<FormRules<RuleForm>>({
   name: [
-    {required: false, message: 'Please input Activity name', trigger: 'blur'},
+    {required: true, message: 'Please input Activity name', trigger: 'blur'},
     {min: 2, max: 20, message: 'Length should be 2 to 20', trigger: 'blur'},
   ],
   mailbox: [
-    {required: false, message: 'Please input Mailbox', trigger: 'blur'},
+    {required: true, message: 'Please input Mailbox', trigger: 'blur'},
     {min: 8, max: 30, message: 'Length should be 8 to 30', trigger: 'blur'},
   ],
   avatar: [
-    {required: false, message: 'Please input Activity name', trigger: 'blur'},
+    {required: true, message: 'Please input Activity name', trigger: 'blur'},
   ],
   skill: [
     {
       type: 'array',
-      required: false,
+      required: true,
       message: 'Please select at least one activity type',
       trigger: 'change',
     },
@@ -292,13 +293,11 @@ const submitForm = async (formEl: FormInstance | undefined) => {
         }
       }).then(res => {
         store.updateUser(res)
+        ElMessage(elMsgOption("保存成功"))
       }).catch(error => {
-        let messageOption = {
-          showClose: true,
-          inputMsg: "更新失败",
-          type: 'error',
-        }
-        ElMessage(messageOption)
+        ElMessage(elMsgOption("保存失败", "error"))
+      }).finally(() => {
+        cancel()
       })
     } else {
 

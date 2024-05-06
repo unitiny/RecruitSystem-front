@@ -4,7 +4,7 @@ import type {UploadProps, UploadUserFile} from 'element-plus'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {defineProps} from "vue/dist/vue";
 import {Close, Plus} from "@element-plus/icons-vue";
-import {getDate} from "@/utils/utils";
+import {checkValue, deepJSONParse, elMsgOption, getDate} from "@/utils/utils";
 import {request} from "@/utils/axios";
 import {API, userDemandGroup} from "@/api/api";
 
@@ -23,7 +23,8 @@ const formData = ref({
   name: "",
   demand: "",
   materialPath: "",
-  remuneration: 1,
+  remuneration: 0,
+  leftFee: 0,
   plan: <plan[]>[],
   planLineID: "",
   duration: [],
@@ -121,12 +122,12 @@ function updateDemand(dm) {
   setDemand(dm)
 
   //创建userDemand
-  for (let i = 0; i < formData.value.recruitNum; i++) {
-    createUserDemand(i + 1)
-  }
+  // for (let i = 0; i < formData.value.recruitNum; i++) {
+  //   createUserDemand(i + 1)
+  // }
 }
 
-function createUserDemand(role) {
+async function createUserDemand(role) {
   request({
     url: userDemandGroup.pub,
     method: API.POST,
@@ -145,7 +146,8 @@ function setDemand(dm) {
   dm.value.start = formData.value.duration[0]
   dm.value.end = formData.value.duration[1]
   dm.value.requires = JSON.stringify(formData.value.requires)
-  dm.value.remuneration = parseFloat(formData.value.remuneration as string)
+  dm.value.remuneration = formData.value.remuneration
+  dm.value.leftFee = dm.value.remuneration
   dm.value.recruitNum = formData.value.recruitNum
   dm.value.notes = formData.value.notes
 }
@@ -159,13 +161,29 @@ function pointerOpt() {
   return formData.value.requireName.slice(0, formData.value.recruitNum)
 }
 
+function check() {
+  let b = checkValue(
+      formData.value.duration[0],
+      formData.value.duration[1],
+      formData.value.requires,
+      formData.value.remuneration,
+      formData.value.recruitNum,
+  )
+  if (!b) {
+    ElMessage(elMsgOption("请输入需求名称和概述", "warning"))
+    return false
+  }
+
+  return true
+}
+
 onMounted(() => {
   formData.value.plan = []
   formData.value.duration = []
   formData.value.duration.push(props.demand.start)
   formData.value.duration.push(props.demand.end)
-  formData.value.requires = props.demand.requires ? JSON.parse(props.demand.requires) : []
-  formData.value.remuneration = props.demand.remuneration
+  formData.value.requires = deepJSONParse(props.demand.requires)
+  formData.value.remuneration = parseInt(props.demand.remuneration)
   formData.value.recruitNum = props.demand.recruitNum
   formData.value.notes = props.demand.notes
 
@@ -187,7 +205,7 @@ onMounted(() => {
   ]
 })
 
-defineExpose({updateDemand})
+defineExpose({updateDemand, check})
 </script>
 
 <template>
@@ -210,7 +228,7 @@ defineExpose({updateDemand})
         <el-row class="childInputItem">
           <el-col :span="6">开发费用：</el-col>
           <el-col :span="16">
-            <el-input v-model="formData.remuneration" placeholder=""/>
+            <el-input type="number" v-model="formData.remuneration" placeholder=""/>
           </el-col>
         </el-row>
         <el-row class="childInputItem">
@@ -260,80 +278,80 @@ defineExpose({updateDemand})
           </el-row>
         </el-col>
       </el-row>
-      <el-row class="row inputItem">
-        <el-col :span="3">总体计划：</el-col>
-        <el-col :span="20" class="row">
-          <template style="display: block;">
-            <el-timeline>
-              <el-timeline-item v-for="item in formData.plan" center>
-                <div class="flex-ai-center" style="margin: 5px 0;">
-                  <el-icon :size="18">
-                    <Timer/>
-                  </el-icon>
-                  &nbsp;
-                  <el-date-picker
-                      v-model="item.time"
-                      type="date"
-                      placeholder="Pick a day"
-                  />
-                </div>
-                <el-card>
-                  <el-row class="row" style="margin-bottom: 15px;">
-                    <el-col :span="24" class="flex-ai-center">
-                      <el-row class="row flex-ai-center">
-                        <el-col :span="3">
-                          <span>标题：</span>
-                        </el-col>
-                        <el-col :span="18">
-                          <el-input
-                              v-model="item.title"
-                              placeholder="计划标题"
-                          />
-                        </el-col>
-                      </el-row>
-                    </el-col>
-                  </el-row>
-                  <el-row class="row">
-                    <el-col :span="24" class="flex-ai-center">
-                      <el-row class="row flex-ai-center">
-                        <el-col :span="3">
-                          <span>内容：</span>
-                        </el-col>
-                        <el-col :span="18">
-                          <el-input
-                              v-model="item.content"
-                              :rows="2"
-                              type="textarea"
-                              placeholder="计划内容"
-                          />
-                        </el-col>
-                      </el-row>
-                    </el-col>
-                  </el-row>
-                </el-card>
-              </el-timeline-item>
-            </el-timeline>
-            <el-row>
-              <el-button @click="changePlan(1)">
-                <el-icon>
-                  <Plus/>
-                </el-icon>
-              </el-button>
-              <el-button @click="changePlan(-1)">
-                <el-icon>
-                  <Minus/>
-                </el-icon>
-              </el-button>
-            </el-row>
-          </template>
-        </el-col>
-      </el-row>
+      <!--      <el-row class="row inputItem">-->
+      <!--        <el-col :span="3">总体计划：</el-col>-->
+      <!--        <el-col :span="20" class="row">-->
+      <!--          <template style="display: block;">-->
+      <!--            <el-timeline>-->
+      <!--              <el-timeline-item v-for="item in formData.plan" center>-->
+      <!--                <div class="flex-ai-center" style="margin: 5px 0;">-->
+      <!--                  <el-icon :size="18">-->
+      <!--                    <Timer/>-->
+      <!--                  </el-icon>-->
+      <!--                  &nbsp;-->
+      <!--                  <el-date-picker-->
+      <!--                      v-model="item.time"-->
+      <!--                      type="date"-->
+      <!--                      placeholder="Pick a day"-->
+      <!--                  />-->
+      <!--                </div>-->
+      <!--                <el-card>-->
+      <!--                  <el-row class="row" style="margin-bottom: 15px;">-->
+      <!--                    <el-col :span="24" class="flex-ai-center">-->
+      <!--                      <el-row class="row flex-ai-center">-->
+      <!--                        <el-col :span="3">-->
+      <!--                          <span>名称：</span>-->
+      <!--                        </el-col>-->
+      <!--                        <el-col :span="18">-->
+      <!--                          <el-input-->
+      <!--                              v-model="item.title"-->
+      <!--                              placeholder="计划名称"-->
+      <!--                          />-->
+      <!--                        </el-col>-->
+      <!--                      </el-row>-->
+      <!--                    </el-col>-->
+      <!--                  </el-row>-->
+      <!--                  <el-row class="row">-->
+      <!--                    <el-col :span="24" class="flex-ai-center">-->
+      <!--                      <el-row class="row flex-ai-center">-->
+      <!--                        <el-col :span="3">-->
+      <!--                          <span>内容：</span>-->
+      <!--                        </el-col>-->
+      <!--                        <el-col :span="18">-->
+      <!--                          <el-input-->
+      <!--                              v-model="item.content"-->
+      <!--                              :rows="2"-->
+      <!--                              type="textarea"-->
+      <!--                              placeholder="计划内容"-->
+      <!--                          />-->
+      <!--                        </el-col>-->
+      <!--                      </el-row>-->
+      <!--                    </el-col>-->
+      <!--                  </el-row>-->
+      <!--                </el-card>-->
+      <!--              </el-timeline-item>-->
+      <!--            </el-timeline>-->
+      <!--            <el-row>-->
+      <!--              <el-button @click="changePlan(1)">-->
+      <!--                <el-icon>-->
+      <!--                  <Plus/>-->
+      <!--                </el-icon>-->
+      <!--              </el-button>-->
+      <!--              <el-button @click="changePlan(-1)">-->
+      <!--                <el-icon>-->
+      <!--                  <Minus/>-->
+      <!--                </el-icon>-->
+      <!--              </el-button>-->
+      <!--            </el-row>-->
+      <!--          </template>-->
+      <!--        </el-col>-->
+      <!--      </el-row>-->
       <el-row class="row inputItem">
         <el-col :span="3">备注：</el-col>
         <el-col :span="20">
           <el-input
               v-model="formData.notes"
-              :rows="2"
+              :rows="10"
               type="textarea"
               placeholder="Please input"
           />

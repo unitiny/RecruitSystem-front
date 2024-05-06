@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import {onBeforeMount, onMounted, ref} from "vue"
-import {API, GetDemand, PutDemand, userDemandGroup} from "@/api/api";
+import {onBeforeMount, onMounted, ref, watch} from "vue"
+import {API, GetDemand, GetEngineerParentSkills, PutDemand, userDemandGroup} from "@/api/api";
 import {useRoute} from "vue-router";
-import {copy, getAliasArr} from "@/utils/utils";
+import {copy, getAliasArr, deepJSONParse} from "@/utils/utils";
 import {request} from "@/utils/axios";
 import {useGlobalStore} from "@/store/pinia";
 import {ElMessage} from "element-plus";
@@ -18,8 +18,20 @@ interface Plan {
 const route = useRoute()
 const store = useGlobalStore()
 const demand = ref({})
+const skills = ref([])
 const userDemandList = ref([])
+const engineerSkills = ref([])
 
+const statusSelect = [
+  {
+    label: "待完成",
+    value: "1"
+  },
+  {
+    label: "已完成",
+    value: "3"
+  }
+]
 const menu = ref([
   {
     index: "0",
@@ -34,7 +46,11 @@ const handleSelect = (key: string, keyPath: string[]) => {
 }
 
 function udIndex(): number {
-  return parseInt(activeIndex.value) - 1
+  let i = parseInt(activeIndex.value)
+  if (i > 0) {
+    return i - 1
+  }
+  return i
 }
 
 function formatTooltip(num: number): number | string {
@@ -42,32 +58,8 @@ function formatTooltip(num: number): number | string {
   return `${num}% ￥${fee}`
 }
 
-function getUserDemandList() {
-  request({
-    url: userDemandGroup.list,
-    method: API.GET,
-    params: {
-      did: route.query.did,
-      publisherID: store["user"].id,
-      order: "role asc"
-    }
-  }).then(res => {
-    userDemandList.value = res["list"]
-    for (let i = 0; i < userDemandList.value.length; i++) {
-      if (userDemandList.value[i].plan) {
-        userDemandList.value[i].plan = JSON.parse(userDemandList.value[i].plan)
-      } else {
-        userDemandList.value[i].plan = [<Plan>{
-          time: "",
-          title: "",
-          content: "",
-          fee: 0,
-          status: 1,
-        }]
-      }
-    }
-    console.log(userDemandList.value)
-  })
+function changePlanStatus(i) {
+
 }
 
 function changePlan(way) {
@@ -126,15 +118,61 @@ function savePlan() {
   }
 }
 
+async function getUserDemandList() {
+  request({
+    url: userDemandGroup.list,
+    method: API.GET,
+    params: {
+      did: demand.value.id,
+      publisherID: demand.value.uid,
+      order: "role asc"
+    }
+  }).then(res => {
+    userDemandList.value = res["list"]
+    for (let i = 0; i < userDemandList.value.length; i++) {
+      if (userDemandList.value[i].plan) {
+        userDemandList.value[i].plan = JSON.parse(userDemandList.value[i].plan)
+      } else {
+        userDemandList.value[i].plan = [<Plan>{
+          time: "",
+          title: "",
+          content: "",
+          fee: 0,
+          status: 1,
+        }]
+      }
+    }
+    console.log(userDemandList.value)
+  })
+}
+
+function getSkillTags(val: string[]): string[] {
+  if (!val || val.length === 0) {
+    return []
+  }
+  let res = []
+  for (const v of val) {
+    res.push(engineerSkills.value[parseInt(v) - 1].label)
+  }
+  return res
+}
+
+watch(
+    () => activeIndex.value,
+    (value, oldValue, onCleanup) => {
+      let i = udIndex()
+      if (demand.value.requires &&
+          i < demand.value.requires.length) {
+        skills.value = getSkillTags(demand.value.requires[i]?.value)
+      }
+    }
+)
+
 onBeforeMount(() => {
   GetDemand(route.query.did).then(res => {
-    let plan = []
-    if (res["plan"]) {
-      plan = JSON.parse(res["plan"])
-    }
-
     demand.value = res
-    demand.value.plan = plan
+    demand.value.plan = deepJSONParse(res["plan"])
+    demand.value.requires = deepJSONParse(res["requires"])
     let aliasArr = getAliasArr(demand.value.recruitNum)
     for (let i = 0; i < aliasArr.length; i++) {
       menu.value.push({
@@ -146,19 +184,27 @@ onBeforeMount(() => {
   })
 
   getUserDemandList()
+  GetEngineerParentSkills().then(res => {
+    engineerSkills.value = res
+    console.log(engineerSkills.value)
+  })
 })
 </script>
 
 <template>
   <div class="row flex-col flex-ai-center">
-    <el-menu
-        :default-active="activeIndex"
-        :ellipsis="false"
-        class="el-menu-demo"
-        mode="horizontal"
-        @select="handleSelect">
-      <el-menu-item v-for="item in menu" :index="item.index">{{ item.name }}</el-menu-item>
-    </el-menu>
+    <el-row class="header flex-center">
+      <el-button class="savePlan" type="primary" @click.passive="savePlan">保存计划</el-button>
+      <el-menu
+          :default-active="activeIndex"
+          :ellipsis="false"
+          class="el-menu-demo"
+          mode="horizontal"
+          @select="handleSelect">
+        <el-menu-item v-for="item in menu" :index="item.index">{{ item.name }}</el-menu-item>
+      </el-menu>
+    </el-row>
+
     <el-scrollbar v-if="activeIndex === '0'" class="scrollbar">
       <el-timeline>
         <el-timeline-item v-for="item in demand.plan" center>
@@ -176,19 +222,22 @@ onBeforeMount(() => {
             <el-row class="row" style="margin-bottom: 15px;">
               <el-col :span="24" class="flex-ai-center">
                 <el-row class="row flex-ai-center">
-                  <el-col :span="6">
-                    <span>标题：</span>
+                  <el-col :span="2">
+                    <span>名称：</span>
                   </el-col>
-                  <el-col :span="18">
+                  <el-col :span="22">
                     <el-input
                         v-model="item.title"
-                        placeholder="计划标题"
+                        placeholder="计划名称"
                     />
                   </el-col>
                 </el-row>
               </el-col>
             </el-row>
             <el-row :gutter="20">
+              <el-col :span="24" style="margin-bottom: 8px;">
+                <span>内容：</span>
+              </el-col>
               <el-col :span="24">
                 <el-input
                     v-model="item.content"
@@ -216,8 +265,16 @@ onBeforeMount(() => {
     </el-scrollbar>
 
     <el-scrollbar v-else class="scrollbar">
+      <el-row class="row skills">
+        <el-col :span="2">技能：</el-col>
+        <el-col :span="16">
+            <span v-for="tag in skills">
+              {{ tag }}&nbsp;
+            </span>
+        </el-col>
+      </el-row>
       <el-timeline>
-        <el-timeline-item v-for="item in userDemandList[udIndex()].plan" center>
+        <el-timeline-item v-for="(item, index) in userDemandList[udIndex()].plan" center>
           <div class="flex-ai-center" style="margin: 5px 0;">
             <el-icon :size="18">
               <Timer/>
@@ -227,26 +284,77 @@ onBeforeMount(() => {
                 v-model="item.time"
                 type="date"
                 placeholder="Pick a day"/>
+
+<!--            <el-select-->
+<!--                class="m-2"-->
+<!--                placeholder="更新状态"-->
+<!--                @change="changePlanStatus(index)"-->
+<!--            >-->
+<!--              <el-option-->
+<!--                  v-for="item in statusSelect"-->
+<!--                  :key="item.value"-->
+<!--                  :label="item.label"-->
+<!--                  :value="item.value"-->
+<!--              />-->
+<!--            </el-select>-->
           </div>
           <el-card>
-            <el-row class="row flex-ai-center">
-              <el-col :span="12">
-                <span>标题：</span>
-                <el-col>
-                  <el-input
-                      v-model="item.title"
-                      placeholder="计划标题"
-                  />
-                </el-col>
-              </el-col>
-              <el-col :span="12" class="card-right">
-                <el-row class="row card-fee">
-                  报酬：&nbsp;&nbsp;
-                  <el-slider v-model="item.fee" :format-tooltip="formatTooltip"/>
+            <el-row class="row flex-ai-center" style="margin-bottom: 15px;">
+              <el-col :span="10">
+                <el-row>
+                  <el-col :span="4">名称：</el-col>
+                  <el-col :span="18">
+                    <el-input
+                        v-model="item.title"
+                        placeholder="计划标题"
+                    />
+                  </el-col>
                 </el-row>
               </el-col>
+              <el-col :span="10" class="card-right">
+                <el-row class="row card-fee">
+                  <el-col :span="4">报酬：</el-col>
+                  <el-col :span="18">
+                    <el-slider v-model="item.fee" :format-tooltip="formatTooltip"/>
+                  </el-col>
+                </el-row>
+              </el-col>
+              <el-col :span="4" class="flex-center">
+                    <span class="plan-operate">
+                      <span v-if="store['user'].identity === 1">
+                        <span v-if="item.status === 1">
+                          <el-tag>待完成</el-tag>
+                        </span>
+                        <span v-else-if="item.status === 2">
+                          <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
+                          <el-tag>申请中</el-tag>
+                        </span>
+                        <span v-else-if="item.status === 3">
+                          <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
+                          <el-tag>已完成</el-tag>
+                        </span>
+                      </span>
+                      <span v-else-if="store['user'].identity === 2">
+                      <span v-if="item.status === 1">
+                          <el-tag>待完成</el-tag>
+                      </span>
+                      <span v-else-if="item.status === 2">
+                        <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
+                        <el-tag>申请中</el-tag>
+                      </span>
+                      <span v-else-if="item.status === 3">
+                        <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
+                        <el-tag>已完成</el-tag>
+                      </span>
+                    </span>
+                    </span>
+              </el-col>
+
             </el-row>
             <el-row>
+              <el-col :span="24" style="margin-bottom: 8px;">
+                <span>内容：</span>
+              </el-col>
               <el-col :span="24">
                 <el-input
                     v-model="item.content"
@@ -272,14 +380,26 @@ onBeforeMount(() => {
         </el-button>
       </el-row>
     </el-scrollbar>
-
-    <el-button type="primary" @click.passive="savePlan">save</el-button>
   </div>
 </template>
 
 <style scoped lang="scss">
+.header {
+  position: relative;
+  width: 80%;
+
+  .savePlan {
+    position: absolute;
+    right: 0;
+  }
+}
+
 .scrollbar {
   height: 550px;
   width: 80%;
+}
+
+.skills {
+  padding: 10px 0;
 }
 </style>

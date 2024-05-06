@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import router from "@/router";
-import {diffDay, getTags, getPaymentWay} from "@/utils/utils";
-import {defineProps} from "vue";
+import {diffDay, getTags, getPaymentWay, getMoney} from "@/utils/utils";
+import {defineProps, onMounted, ref} from "vue";
 import {global} from "@/static/static";
 import {useGlobalStore} from "@/store/pinia";
+import {GetUser} from "@/api/api";
 
 const props = defineProps({
   demand: {
@@ -12,8 +13,8 @@ const props = defineProps({
   }
 })
 
-const avatar = global.path.static + '/img/avatar.jpg'
 const store = useGlobalStore()
+const user = ref({})
 
 function demandDetail(did) {
   router.push({
@@ -34,12 +35,16 @@ function privateChat(did, uid) {
   })
 }
 
+onMounted(() => {
+  GetUser(props.demand.uid).then(res => {
+    user.value = res
+  })
+})
 </script>
 
 <template>
   <el-row @click="demandDetail(props.demand.id)"
-          class="demand-card"
-  >
+          class="demand-card">
     <el-row class="body">
       <el-col :span="20" class="content">
         <el-row class="flex-ai-center">
@@ -64,7 +69,7 @@ function privateChat(did, uid) {
               <UserFilled/>
             </el-icon>
             &nbsp;
-            <b>1/{{ props.demand.recruitNum }}</b>&nbsp;
+            <b>{{ props.demand.hasRecruitNum }}/{{ props.demand.recruitNum }}</b>&nbsp;
           </el-col>
         </el-row>
         <el-row class="demand-content">
@@ -74,12 +79,14 @@ function privateChat(did, uid) {
         </el-row>
       </el-col>
       <el-col :span="4" class="flex-col flex-ai-center">
-        <el-avatar :size="40" :src="avatar" style="margin-right: 10px;"/>
-        <span>刘先生</span>
+        <el-avatar :size="40" :src="user.avatar" style="margin-right: 10px;"/>
+        <span>{{user.nickname}}</span>
         &nbsp;
-        <el-button type="primary"
-                   v-if="store['user']?.identity !== 1"
-                   @click.stop="privateChat(props.demand.id, props.demand?.uid)">
+        <el-button
+            style="margin: 10px;"
+            type="primary"
+            v-if="store['user']?.identity !== 1"
+            @click.stop="privateChat(props.demand.id, props.demand?.uid)">
           立即沟通
         </el-button>
       </el-col>

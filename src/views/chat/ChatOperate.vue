@@ -3,7 +3,9 @@ import {defineProps, ref} from "vue";
 import {checkIfImage, checkIfZip} from "@/utils/utils";
 import {MessageMedia, MessageType} from "@/utils/websocket";
 import {ElMessage} from "element-plus";
+import {useGlobalStore} from "@/store/pinia";
 
+const store = useGlobalStore()
 const props = defineProps({
   applyJoin: {
     type: Function,
@@ -14,6 +16,10 @@ const props = defineProps({
     required: true
   },
   applyFinishItem: {
+    type: Function,
+    required: true
+  },
+  rate: {
     type: Function,
     required: true
   },
@@ -78,6 +84,7 @@ function convertImageToBase64(file) {
         </el-icon>
       </el-tooltip>
       <el-tooltip
+          v-if="store['user'].identity !== 1"
           class="box-item"
           effect="dark"
           content="接手需求申请"
@@ -88,6 +95,7 @@ function convertImageToBase64(file) {
         </el-icon>
       </el-tooltip>
       <el-tooltip
+          v-if="store['user'].identity !== 1"
           class="box-item"
           effect="dark"
           content="更新计划申请"
@@ -98,13 +106,23 @@ function convertImageToBase64(file) {
         </el-icon>
       </el-tooltip>
       <el-tooltip
+          v-if="store['user'].identity !== 1"
           class="box-item"
           effect="dark"
           content="完结项目申请"
-          placement="top"
-      >
+          placement="top">
         <el-icon :size="20" @click="props.applyFinishItem">
           <CircleCheck/>
+        </el-icon>
+      </el-tooltip>
+      <el-tooltip
+          v-if="store['user'].identity === 1"
+          class="box-item"
+          effect="dark"
+          content="评价"
+          placement="top">
+        <el-icon :size="20" @click="props.rate">
+          <Star/>
         </el-icon>
       </el-tooltip>
     </el-row>

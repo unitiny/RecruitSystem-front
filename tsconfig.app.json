@@ -5,7 +5,9 @@
     "src/**/*",
     "src/**/*.vue",
     "auto-imports.d.ts",
-    "../../../WebStorm/WebStorm 2022.1.2/plugins/JavaScriptLanguage/jsLanguageServicesImpl/external/lib.es5.d.ts"
+    "../../../WebStorm/WebStorm 2022.1.2/plugins/JavaScriptLanguage/jsLanguageServicesImpl/external/lib.es5.d.ts",
+    "node_modules/typescript/lib/lib.es5.d.ts",
+    "node_modules/unplugin-auto-import/auto-imports.d.ts"
   ],
   "exclude": ["src/**/__tests__/*"],
   "compilerOptions": {

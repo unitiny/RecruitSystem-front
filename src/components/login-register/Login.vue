@@ -1,10 +1,10 @@
 <script lang="ts" setup="">
 import {ref, defineProps, defineEmits, watchEffect} from 'vue'
-import {ElMessage} from 'element-plus'
+import {ElMessage, FormRules} from 'element-plus'
 import {API, loginGroup} from '@/api/api'
 import {request} from '@/utils/axios'
 import {i18nText, i18nGroup} from '@/utils/i18n'
-import {errorText} from "@/utils/utils"
+import {checkValue, elMsgOption, errorText} from "@/utils/utils"
 import {global} from "@/static/static.ts"
 import {useGlobalStore} from "@/store/pinia"
 
@@ -19,6 +19,27 @@ const props = defineProps({
   }
 })
 
+const loginRule = ref({
+  account: [{
+    require: true,
+    message: '请输入账号',
+    trigger: 'blur'
+  }],
+  password: [{
+    require: true,
+    message: '请输入密码',
+    trigger: 'blur'
+  }],
+  code: [{
+    require: true,
+    message: '请输入验证码',
+    trigger: 'blur'
+  }],
+})
+const roleImg = {
+  boss: global.path.static + "/img/boss.jpg",
+  developer: global.path.static + "/img/developer.jpg"
+}
 const visible = ref(false)
 watchEffect(() => visible.value = props.visible)
 
@@ -34,8 +55,13 @@ const data = ref({
 const store = useGlobalStore()
 
 function login() {
-  console.log(data.value)
-  // todo 表单校验
+  if (data.value.loginWay === 0 && !checkValue(data.value.account, data.value.password)) {
+    ElMessage(elMsgOption("请输入账号和密码", "warning"))
+    return
+  } else if (data.value.loginWay === 1 && !checkValue(data.value.account, data.value.smsCode)) {
+    ElMessage(elMsgOption("请输入账号和验证码", "warning"))
+    return
+  }
 
   let messageOption = {
     showClose: true,
@@ -100,8 +126,14 @@ function close() {
 
 <template>
   <div v-if="visible" class="login-main">
-    <div class="login-identity" @click="changeIdentity">
-      {{ data.identity === 1 ? i18nText("recruiter") : i18nText("developer") }}
+    <div class="login-identity flex-center flex-col" @click="changeIdentity">
+      <el-row class="row">
+        <el-image fit="scale-down"
+                  :src="data.identity === 1 ? roleImg.boss : roleImg.developer"></el-image>
+      </el-row>
+      <el-row>
+        {{ data.identity === 1 ? i18nText("recruiter") : i18nText("developer") }}
+      </el-row>
     </div>
     <div class="login-box">
       <el-row justify="space-between">
@@ -119,15 +151,19 @@ function close() {
         </el-col>
       </el-row>
       <el-space direction="vertical" style="width: 100%;" :fill="true">
-        <el-row justify="center" style="margin-top: 40px;">
-          <el-input v-model="data.account"
-                    class="w-50 m-2"
-                    size="large"
-                    :placeholder="i18nGroup('inputTip', 'account')"/>
-        </el-row>
+        <!--test-->
+        <el-form :rules="loginRule">
+          <el-form-item class="row" prop="account" style="margin-top: 40px;">
+            <el-input v-model="data.account"
+                      class="w-50 m-2"
+                      size="large"
+                      :placeholder="i18nGroup('inputTip', 'account')"/>
+          </el-form-item>
+        </el-form>
         <el-row justify="center">
           <el-input v-if="data.loginWay === 0"
                     v-model="data.password"
+                    show-password
                     class="w-50 m-2"
                     size="large"
                     :placeholder="i18nGroup('inputTip', 'password')"/>
@@ -169,7 +205,8 @@ function close() {
 
 .login-identity {
   width: 35%;
-  @include flex(row, center, center);
+  padding: 10px;
+  //@include flex(row, center, center);
 }
 
 .login-box {

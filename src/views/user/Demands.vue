@@ -13,7 +13,6 @@ import {Action} from "element-plus";
 const store = useGlobalStore()
 const router = useRouter()
 
-const avatar = global.path.static + '/img/avatar.jpg'
 const contentRef = ref()
 const scrollerHeight = ref("")
 
@@ -179,6 +178,15 @@ function editDemand(did) {
   })
 }
 
+function editDemandPlan(did) {
+  router.push({
+    path: "/userdemand/arrangeplan",
+    query: {
+      "did": did
+    }
+  })
+}
+
 function delDemand(did: number) {
   let msg = {
     showClose: true,
@@ -195,6 +203,7 @@ function delDemand(did: number) {
     demandList.value = demandList.value.filter(d => d.id !== did)
     demandTotal.value = demandList.value.length
   }).catch(err => {
+    msg.type = "error"
     msg.message = err
   }).finally(() => {
     ElMessage(msg)
@@ -358,6 +367,7 @@ onMounted(() => {
                   <div v-if="demandCtl.operateVisible[item?.id]" class="slide-item">
                     <div class="demand-operate" @click.stop="">
                       <span @click.stop="editDemand(item?.id)">编辑</span>
+                      <span @click.stop="editDemandPlan(item?.id)">进度</span>
                       <span @click.stop="showDelTip(item?.id)">删除</span>
                     </div>
                     <div class="tri"></div>
@@ -483,7 +493,7 @@ onMounted(() => {
 .slide-item {
   position: absolute;
   right: 0;
-  width: 50%;
+  width: 90%;
   height: 100%;
 }
 
@@ -503,5 +513,23 @@ onMounted(() => {
 
 .slide-right-enter-to {
   transform: translateX(0);
+}
+
+.slide-top-enter-active {
+  transition: all 0.7s ease;
+  transform: translateY(100%);
+}
+
+.slide-top-leave-active {
+  transition: all 0.7s ease;
+  transform: translateY(0);
+}
+
+.slide-top-leave-to {
+  transform: translateY(100%);
+}
+
+.slide-top-enter-to {
+  transform: translateY(0);
 }
 </style>

@@ -3,8 +3,6 @@ import {defineProps} from "vue";
 import {global} from "@/static/static";
 import {getBackTime} from "@/utils/utils";
 
-const avatar = global.path.static + "/img/avatar.jpg"
-
 const props = defineProps({
   rooms: {
     type: Object,
@@ -27,7 +25,7 @@ function lastMessage(room) {
 function lastTime(room) {
   let l = room?.messages.length
   if (l > 0) {
-    getBackTime(room?.messages[l - 1].time)
+    return getBackTime(room?.messages[l - 1].time)
   }
   return ""
 }
@@ -40,7 +38,7 @@ function lastTime(room) {
             @click="props.exchangeChatUser(item?.chatID)"
             class="row chat-item">
       <el-col :span="4" class="flex-center flex-col">
-        <el-avatar :size="50" :src="avatar"/>
+        <el-avatar :size="50" :src="item?.chatUser?.avatar"/>
       </el-col>
       <el-col :span="16" class="content">
         <div>{{ item?.chatUser?.nickname }}</div>
@@ -58,5 +56,19 @@ function lastTime(room) {
 </template>
 
 <style scoped lang="scss">
+.chat-list {
+  min-height: 600px;
+  max-height: 600px;
+  .chat-item {
+    padding: 10px 5px;
+    border-bottom: solid 1px #999999;
 
+    .content {
+      display: flex;
+      justify-content: center;
+      align-items: start;
+      flex-direction: column;
+    }
+  }
+}
 </style>

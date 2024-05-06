@@ -18,7 +18,11 @@ function updateDemand(dm) {
   dm.value.type = demand.value.type
 }
 
-defineExpose({updateDemand})
+function check() {
+  return true
+}
+
+defineExpose({updateDemand, check})
 </script>
 
 <template>

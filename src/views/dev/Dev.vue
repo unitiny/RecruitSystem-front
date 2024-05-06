@@ -2,18 +2,29 @@
 import {onMounted, ref} from "vue"
 import {global} from "@/static/static";
 import {request} from "@/utils/axios";
-import {userDemandGroup, userGroup} from "@/api/api";
+import {demandGroup, userDemandGroup, userGroup} from "@/api/api";
 import {getSkills} from "@/utils/utils";
 import {useRouter} from "vue-router";
 import {useGlobalStore} from "@/store/pinia";
 
 const router = useRouter()
 const store = useGlobalStore()
-const avatar = global.path.static + '/img/avatar.jpg'
 
+const demandList = ref([])
 const developers = ref([])
 const evaluates = ref({})
 const total = ref(0)
+const choose = ref({
+  visible: false,
+  index: 0,
+  did: 0,
+  uid: 0
+})
+
+function visibleDemands(uid) {
+  choose.value.uid = uid ?? 0
+  choose.value.visible = !choose.value.visible
+}
 
 function privateChat(did, uid) {
   router.push({
@@ -63,10 +74,34 @@ function getSkillTags(tags) {
   return tags
 }
 
+function getDemandList() {
+  request({
+    url: demandGroup.list,
+    params: {
+      start: 0,
+      limit: 10,
+      order: "",
+      uid: store["user"].id,
+    }
+  }).then(res => {
+    demandList.value.push(...res["list"])
+    console.log(demandList.value)
+  })
+}
+
+function selectDemand(i) {
+  choose.value.index = i
+  choose.value.did = demandList.value[i].id
+}
+
+function confirm() {
+  privateChat(choose.value.did, choose.value.uid)
+}
 
 onMounted(() => {
   getDevelopers()
   getEvaluates()
+  getDemandList()
 })
 </script>
 
@@ -77,18 +112,23 @@ onMounted(() => {
         <el-col v-for="item in developers" :span="7" class="card">
           <el-row class="row">
             <el-col :span="10" class="avatar-area">
-              <el-avatar :size="80" :src="avatar" style="margin-right: 10px;"/>
+              <el-avatar :size="80" :src="item?.avatar" style="margin-right: 10px;"/>
               <div class="operate row">
-                <el-icon v-if="store['user']?.identity === 1"
-                         @click="privateChat(0, item?.id)" :size="20">
-                  <ChatRound/>
-                </el-icon>
-                <el-icon :size="20">
-                  <Star/>
-                </el-icon>
-                <el-icon :size="20">
-                  <StarFilled/>
-                </el-icon>
+                <el-button v-if="store['user']?.identity === 1"
+                           @click="visibleDemands(item?.id)"
+                           type="primary">
+                  立即沟通&nbsp;
+                  <el-icon :size="16">
+                    <ChatRound/>
+                  </el-icon>
+                </el-button>
+
+                <!--                <el-icon :size="20">-->
+                <!--                  <Star/>-->
+                <!--                </el-icon>-->
+                <!--                <el-icon :size="20">-->
+                <!--                  <StarFilled/>-->
+                <!--                </el-icon>-->
               </div>
             </el-col>
             <el-col :span="14" class="info">
@@ -130,6 +170,24 @@ onMounted(() => {
         </el-col>
       </el-row>
     </el-scrollbar>
+    <el-dialog v-model="choose.visible"
+               title="选择要沟通的需求" width="750">
+      <el-row class="row"
+              @click="selectDemand(index)"
+              v-for="(item, index) in demandList">
+        <SimpleDemand :class="{'demand': true, 'demand-choose': choose.index === index}"
+                      :demand="item"
+                      :cancel-click="true"></SimpleDemand>
+      </el-row>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="visibleDemands">取消</el-button>
+          <el-button type="primary" @click="confirm">
+            确定
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -206,5 +264,17 @@ onMounted(() => {
 
 .card:hover {
   box-shadow: var(--el-box-shadow-light);
+}
+
+.demand {
+  margin: 10px 20px;
+}
+
+.demand-choose {
+  border: 1px solid $theme-bgc;
+}
+
+.demand:hover {
+  border: 1px solid $theme-bgc;
 }
 </style>

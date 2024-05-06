@@ -1,9 +1,10 @@
 import config from "/config.json"
 import {chatGroup} from "@/api/api";
-import {getRandomID, getRandomNum} from "@/utils/utils";
+import {getRandomID, getChatID} from "@/utils/utils";
 
 class Message {
     id: string
+    did: number
     senderID: number
     receiverID: number
     groupID: number
@@ -22,6 +23,7 @@ class Message {
 
     constructor({
                     id = "",
+                    did = 0,
                     senderID = 0,
                     receiverID = 0,
                     groupID = 0,
@@ -32,10 +34,10 @@ class Message {
                     time = ""
                 }) {
         this.id = id !== "" ? id : getRandomID("ws")
+        this.did = did !== 0 ? did : 0
         this.senderID = senderID !== 0 ? senderID : 0
         this.receiverID = receiverID !== 0 ? receiverID : 0
-        this.chatID = senderID < receiverID ?
-            `${senderID}-${receiverID}` : `${receiverID}-${senderID}`
+        this.chatID = getChatID(senderID, receiverID, did)
         this.groupID = groupID
         this.media = media
         this.time = time

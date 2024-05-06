@@ -7,9 +7,7 @@ import Mask from "@/components/common/Mask.vue"
 import PersonInformation from "@/components/PersonInformation.vue"
 
 const background = global.path.static + "/img/background.png"
-const avatar = global.path.static + "/img/avatar.jpg"
 const store = useGlobalStore()
-
 
 const user = ref({})
 const editVisible = ref(false)
@@ -47,7 +45,7 @@ function parseSkills(user) {
       <el-card shadow="always" class="card box-card">
         <el-row class="row header" :gutter="50">
           <el-col :span="4" class="flex-center">
-            <el-avatar :size="100" :src="avatar"/>
+            <el-avatar :size="100" :src="user.avatar"/>
           </el-col>
           <el-col :span="20">
             <div class="name">

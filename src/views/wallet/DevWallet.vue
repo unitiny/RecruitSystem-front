@@ -83,7 +83,7 @@ onMounted(() => {
         <el-card>
           <div>可用金额</div>
           <div>
-            ￥{{ getMoney(wallet["wallet"]?.balanceFee) }}
+            ￥{{ wallet["wallet"]?.balanceFee }}
           </div>
           <div>
             <el-button @click="withdraw.visible=true" type="success">提现</el-button>
@@ -93,7 +93,7 @@ onMounted(() => {
                 width="500">
               <div>
                 <span>可用金额：</span>
-                <span>￥{{ getMoney(wallet["wallet"]?.balanceFee) }}</span>
+                <span>￥{{ wallet["wallet"]?.balanceFee }}</span>
               </div>
               <div>
                 <span>支付宝账号：</span>
@@ -122,13 +122,13 @@ onMounted(() => {
       <el-col :span="8" class="column">
         <el-card>
           <div>当月收入</div>
-          <div>￥{{ getMoney(wallet["wallet"]?.balanceFee) }}</div>
+          <div>￥{{ wallet["wallet"]?.balanceFee }}</div>
         </el-card>
       </el-col>
       <el-col :span="8" class="column">
         <el-card>
           <div>当月提现</div>
-          <div>￥{{ getMoney(wallet["wallet"]?.balanceFee) }}</div>
+          <div>￥{{ wallet["wallet"]?.balanceFee }}</div>
         </el-card>
       </el-col>
     </el-row>

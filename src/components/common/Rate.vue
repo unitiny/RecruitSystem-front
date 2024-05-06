@@ -61,7 +61,7 @@ watchEffect(() => visible.value = props.visible)
           <el-input
               v-model="rate.evaluate"
               type="textarea"
-              :rows="2"></el-input>
+              :rows="5"></el-input>
         </span>
       </div>
 

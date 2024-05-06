@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import {onMounted, onUnmounted, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 import PubStep1 from "./Pub_step1.vue"
 import PubStep2 from "./Pub_step2.vue"
 import PubStep3 from "./Pub_step3.vue"
+import PubStep4 from "./Pub_step4.vue"
 import PubFinish from "./Pub_finish.vue"
 import {request} from "@/utils/axios";
 import {API, demandGroup, PutDemand} from "@/api/api";
@@ -14,9 +15,17 @@ const route = useRoute()
 const router = useRouter()
 const store = useGlobalStore()
 
+const page = [2, 3, 4, 5]
+const steps = {
+  step1: 1,
+  step2: 2,
+  step3: 3,
+  step4: 4,
+  finish: 5
+}
 const stepData = ref({
   hasPub: false,
-  active: 1,
+  active: 0,
   list: [
     // {
     //   title: "选择身份",
@@ -31,15 +40,22 @@ const stepData = ref({
       description: ""
     },
     {
+      title: "安排任务",
+      description: ""
+    },
+    {
       title: "完成",
       description: ""
     },
   ]
 })
+const currentStep = computed(() => page[stepData.value.active])
+
 const demand = ref({})
 const pubStep1 = ref()
 const pubStep2 = ref()
 const pubStep3 = ref()
+const pubStep4 = ref()
 const pubFinish = ref()
 const formCardRef = ref()
 const scrollerHeight = ref("550px")
@@ -48,26 +64,46 @@ function updateDemand(dm) {
   demand.value = dm
 }
 
-function changeDemand() {
-  switch (stepData.value.active) {
+function checkDemand() {
+  switch (currentStep.value) {
     case 1:
-      pubStep2.value.updateDemand(demand)
+      return pubStep1.value.check()
+    case 2:
+      return pubStep2.value.check()
+    case 3:
+      return pubStep3.value.check()
+    case 4:
+      return pubStep4.value.check()
+  }
+  return true
+}
+
+function changeDemand() {
+  switch (currentStep.value) {
+    case 1:
+      pubStep1.value.updateDemand(demand)
       break
     case 2:
-      pubStep3.value.updateDemand(demand)
+      pubStep2.value.updateDemand(demand)
       break
     case 3:
-      pubFinish.value.updateDemand(demand)
+      pubStep3.value.updateDemand(demand)
       break
     case 4:
+      pubStep4.value.updateDemand(demand)
+      break
+    case 5:
       pubFinish.value.updateDemand(demand)
       break
   }
 }
 
 function putDemand() {
-  console.log(demand.value)
   demand.value.uid = store["user"].id
+  if (typeof demand.value.remuneration === "string") {
+    demand.value.remuneration = parseInt(demand.value.remuneration)
+    demand.value.leftFee = parseInt(demand.value.leftFee)
+  }
   PutDemand(demand.value).catch(err => {
     console.log(err)
     ElMessage({
@@ -120,13 +156,16 @@ function getDemand(did) {
 }
 
 function changeStep(num: number) {
+  if(!checkDemand()) {
+    return
+  }
   let nextActive = stepData.value.active + num
-  if (nextActive >= 1 && nextActive < 4) {
+  if (nextActive >= 0 && nextActive < page.length) {
     if (num > 0) {
       changeDemand()
     }
 
-    if (stepData.value.active === 1 && !stepData.value.hasPub) {
+    if (stepData.value.active === 0 && !stepData.value.hasPub) {
       pubDemand()
     } else if (num > 0) {
       putDemand()
@@ -139,7 +178,7 @@ onMounted(() => {
   if (route.query.did) {
     stepData.value.hasPub = true
     getDemand(route.query.did)
-  } else if (stepData.value.active === 1 && !stepData.value.hasPub) {
+  } else if (stepData.value.active === 0 && !stepData.value.hasPub) {
     pubDemand()
   }
 
@@ -159,9 +198,10 @@ onMounted(() => {
         <el-card shadow="never" class="column">
           <el-row class="row">
             <el-scrollbar :max-height="scrollerHeight" style="width: 100%">
-              <!--            <PubStep1 v-if="stepData.active === 1" ref="pubStep1" :demand="demand"></PubStep1>-->
-              <PubStep2 v-if="stepData.active === 1" ref="pubStep2" :demand="demand"></PubStep2>
-              <PubStep3 v-else-if="stepData.active === 2" ref="pubStep3" :demand="demand"></PubStep3>
+              <PubStep1 v-if="currentStep === steps.step1" ref="pubStep1" :demand="demand"></PubStep1>
+              <PubStep2 v-else-if="currentStep === steps.step2" ref="pubStep2" :demand="demand"></PubStep2>
+              <PubStep3 v-else-if="currentStep === steps.step3" ref="pubStep3" :demand="demand"></PubStep3>
+              <PubStep4 v-else-if="currentStep === steps.step4" ref="pubStep4" :demand="demand"></PubStep4>
               <PubFinish v-else :demand="demand" ref="pubFinish"></PubFinish>
             </el-scrollbar>
           </el-row>

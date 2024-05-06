@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import {onBeforeMount, onMounted, ref} from "vue"
-import {API, GetDemand, PutDemand, userDemandGroup} from "@/api/api";
+import {onBeforeMount, onMounted, ref, watch} from "vue"
+import {API, GetDemand, GetEngineerParentSkills, PutDemand, userDemandGroup} from "@/api/api";
 import {useRoute} from "vue-router";
-import {copy, getAliasArr, getDemandPlan} from "@/utils/utils";
+import {copy, getAliasArr, deepJSONParse} from "@/utils/utils";
 import {request} from "@/utils/axios";
 import {useGlobalStore} from "@/store/pinia";
 import {ElMessage} from "element-plus";
+import router from "@/router";
 
 const route = useRoute()
 const store = useGlobalStore()
 const demand = ref({})
 const userDemand = ref({})
+const skills = ref([])
+const userDemandList = ref([])
+const engineerSkills = ref([])
 
 const menu = ref([
   {
@@ -40,7 +44,7 @@ function getUserDemand() {
     }
   }).then(res => {
     userDemand.value = res
-    userDemand.value.plan = getDemandPlan(userDemand.value.plan)
+    userDemand.value.plan = deepJSONParse(userDemand.value.plan)
     console.log(userDemand.value)
   })
 }
@@ -96,10 +100,46 @@ function savePlan() {
   }
 }
 
+function getSkillTags(val: string[]): string[] {
+  if (!val || val.length === 0) {
+    return []
+  }
+  let res = []
+  for (const v of val) {
+    res.push(engineerSkills.value[parseInt(v) - 1].label)
+  }
+  return res
+}
+
+function udIndex(): number {
+  return parseInt(activeIndex.value) - 1
+}
+
+function privateChat(did, uid) {
+  router.push({
+    name: "/chat/privatechat",
+    query: {
+      uid: uid,
+      did: did
+    }
+  })
+}
+
+watch(
+    () => activeIndex.value,
+    (value, oldValue, onCleanup) => {
+      let i = udIndex()
+      if (demand.value.requires &&
+          i < demand.value.requires.length) {
+        skills.value = getSkillTags(demand.value.requires[i]?.value)
+      }
+    }
+)
+
 onBeforeMount(() => {
   GetDemand(route.query.did).then(res => {
     demand.value = res
-    demand.value.plan = getDemandPlan(res["plan"])
+    demand.value.plan = deepJSONParse(res["plan"])
 
     let aliasArr = getAliasArr(demand.value.recruitNum)
     for (let i = 0; i < aliasArr.length; i++) {
@@ -112,6 +152,9 @@ onBeforeMount(() => {
   })
 
   getUserDemand()
+  GetEngineerParentSkills().then(res => {
+    engineerSkills.value = res
+  })
 })
 </script>
 
@@ -136,19 +179,21 @@ onBeforeMount(() => {
             <el-date-picker
                 v-model="item.time"
                 type="date"
-                placeholder="Pick a day"/>
+                placeholder="Pick a day"
+                :disabled="true"/>
           </div>
           <el-card class="row">
             <el-row class="row" style="margin-bottom: 15px;">
               <el-col :span="24" class="flex-ai-center">
                 <el-row class="row flex-ai-center">
-                  <el-col :span="6">
-                    <span>标题：</span>
+                  <el-col :span="2">
+                    <span>名称：</span>
                   </el-col>
                   <el-col :span="18">
                     <el-input
                         v-model="item.title"
-                        placeholder="计划标题"
+                        placeholder="计划名称"
+                        :disabled="true"
                     />
                   </el-col>
                 </el-row>
@@ -156,32 +201,32 @@ onBeforeMount(() => {
             </el-row>
             <el-row :gutter="20">
               <el-col :span="24">
+                <span>内容：</span>
+              </el-col>
+              <el-col :span="24">
                 <el-input
                     v-model="item.content"
                     :rows="4"
                     type="textarea"
                     placeholder="计划内容"
+                    :disabled="true"
                 />
               </el-col>
             </el-row>
           </el-card>
         </el-timeline-item>
       </el-timeline>
-      <el-row>
-        <el-button @click.passive="changePlan(1)">
-          <el-icon>
-            <Plus/>
-          </el-icon>
-        </el-button>
-        <el-button @click.passive="changePlan(-1)">
-          <el-icon>
-            <Minus/>
-          </el-icon>
-        </el-button>
-      </el-row>
     </el-scrollbar>
 
     <el-scrollbar v-else class="scrollbar">
+      <el-row class="row skills">
+        <el-col :span="2">技能：</el-col>
+        <el-col :span="16">
+            <span v-for="tag in skills">
+              {{ tag }}&nbsp;
+            </span>
+        </el-col>
+      </el-row>
       <el-timeline>
         <el-timeline-item v-for="item in userDemand.plan" center>
           <div class="flex-ai-center" style="margin: 5px 0;">
@@ -192,54 +237,82 @@ onBeforeMount(() => {
             <el-date-picker
                 v-model="item.time"
                 type="date"
-                placeholder="Pick a day"/>
+                placeholder="Pick a day"
+                :disabled="true"
+            />
+            <el-button type="primary" style="margin-left: 10px;" @click="privateChat(demand.id, demand.uid)">申请更新计划</el-button>
           </div>
           <el-card>
-            <el-row class="row flex-ai-center">
-              <el-col :span="12">
-                <span>标题：</span>
-                <el-col>
-                  <el-input
-                      v-model="item.title"
-                      placeholder="计划标题"
-                  />
-                </el-col>
-              </el-col>
-              <el-col :span="12" class="card-right">
-                <el-row class="row card-fee">
-                  报酬：&nbsp;&nbsp;
-                  <el-slider v-model="item.fee" :format-tooltip="formatTooltip"/>
+            <el-row class="row flex-ai-center" style="margin-bottom: 15px;">
+              <el-col :span="10">
+                <el-row>
+                  <el-col :span="4">名称：</el-col>
+                  <el-col :span="16">
+                    <el-input
+                        v-model="item.title"
+                        placeholder="计划名称"
+                        :disabled="true"
+                    />
+                  </el-col>
                 </el-row>
+              </el-col>
+              <el-col :span="10" class="card-right">
+                <el-row class="row card-fee">
+                  <el-col :span="4">完成报酬：</el-col>
+                  <el-col :span="16">
+                    <span style="color: #ea1515">￥{{ item.fee }}</span>
+                  </el-col>
+                </el-row>
+              </el-col>
+              <el-col :span="4" class="flex-center">
+                    <span class="plan-operate">
+                      <span v-if="store['user'].identity === 1">
+                        <span v-if="item.status === 1">
+                          <el-tag>待完成</el-tag>
+                        </span>
+                        <span v-else-if="item.status === 2">
+                          <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
+                          <el-tag>申请中</el-tag>
+                        </span>
+                        <span v-else-if="item.status === 3">
+                          <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
+                          <el-tag>已完成</el-tag>
+                        </span>
+                      </span>
+                      <span v-else-if="store['user'].identity === 2">
+                      <span v-if="item.status === 1">
+                          <el-tag>待完成</el-tag>
+                      </span>
+                      <span v-else-if="item.status === 2">
+                        <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
+                        <el-tag>申请中</el-tag>
+                      </span>
+                      <span v-else-if="item.status === 3">
+                        <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
+                        <el-tag>已完成</el-tag>
+                      </span>
+                    </span>
+                    </span>
               </el-col>
             </el-row>
             <el-row>
+              <el-col :span="24" style="margin-bottom: 8px;">
+                <span>内容：</span>
+              </el-col>
               <el-col :span="24">
                 <el-input
                     v-model="item.content"
                     :rows="4"
                     type="textarea"
                     placeholder="计划内容"
+                    :disabled="true"
                 />
               </el-col>
             </el-row>
           </el-card>
         </el-timeline-item>
       </el-timeline>
-      <el-row>
-        <el-button @click.passive="changeUserPlan(1)">
-          <el-icon>
-            <Plus/>
-          </el-icon>
-        </el-button>
-        <el-button @click.passive="changeUserPlan(-1)">
-          <el-icon>
-            <Minus/>
-          </el-icon>
-        </el-button>
-      </el-row>
     </el-scrollbar>
-
-    <el-button type="primary" @click.passive="savePlan">save</el-button>
   </div>
 </template>
 
@@ -247,5 +320,9 @@ onBeforeMount(() => {
 .scrollbar {
   height: 550px;
   width: 80%;
+}
+
+.skills {
+  padding: 10px 0;
 }
 </style>

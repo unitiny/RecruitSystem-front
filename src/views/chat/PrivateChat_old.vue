@@ -17,7 +17,6 @@ const apply = {
   finishPlan: 2,
   finishItem: 3
 }
-const avatar = global.path.static + "/img/avatar.jpg"
 
 const chatUser = ref({})
 const demand = ref({})
@@ -91,6 +90,7 @@ function setWS() {
 
 function send(type, content) {
   let msg = new Message({
+    // did: chat.value.curDid,
     senderID: store["user"].id,
     receiverID: chatUser.value.id,
     chatID: chat.value.curChatID,
@@ -150,7 +150,7 @@ function getApplyMsgData(message: Message) {
     case apply.join:
       cooperate.value.role = message.applyContent.data.role
       break
-    case apply.finishPlan:
+    case apply.finishItem:
       break
     case apply.finishItem:
       break
@@ -205,7 +205,7 @@ function agreeJoin() {
 }
 
 function applyFinishPlan() {
-  send(MessageType.apply, apply.finishPlan)
+  send(MessageType.apply, apply.finishItem)
 }
 
 function agreeFinishPlan() {
@@ -318,7 +318,7 @@ onBeforeMount(async () => {
                 @click="exchangeChatUser(item.chatID, item.chatUserID)"
                 class="row chat-item">
           <el-col :span="4" class="flex-center flex-col">
-            <el-avatar :size="50" :src="avatar"/>
+            <el-avatar :size="50" :src="item?.chatUserID"/>
           </el-col>
           <el-col :span="16" class="content">
             <div>{{ item?.chatUserName }}</div>
@@ -344,7 +344,7 @@ onBeforeMount(async () => {
                   <el-row class="flex-ai-center">
                     <el-col :span="6">{{ demand?.name }}</el-col>
                     <el-col :span="6" class="flex-ai-center">
-                      <b>1/{{ demand?.recruitNum }}</b>&nbsp;
+                      <b>{{ demand?.hasRecruitNum }}/{{ demand?.recruitNum }}</b>&nbsp;
                       <el-icon>
                         <UserFilled/>
                       </el-icon>
@@ -399,7 +399,7 @@ onBeforeMount(async () => {
                         <el-button>拒绝</el-button>
                       </div>
                     </el-card>
-                    <el-card v-else-if="item.applyContent.type === apply.finishPlan" shadow="always" class="chat-card">
+                    <el-card v-else-if="item.applyContent.type === apply.finishItem" shadow="always" class="chat-card">
                       <div v-if="item.senderID === store['user'].id">{{ item.applyContent.data.selfContent }}</div>
                       <div v-else>{{ item.applyContent.data.otherContent }}</div>
                       <div class="flex-center" style="justify-content: space-around;">

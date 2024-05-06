@@ -9,7 +9,7 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  send: {
+  confirm: {
     type: Function,
     required: true
   },
@@ -33,7 +33,7 @@ function selectRole() {
 
 function applyJoin(role) {
   let alias = getAlias(role - 1)
-  props.send!(MessageType.apply, {
+  props.confirm!(MessageType.apply, {
     type: 1,
     data: {
       role: role,

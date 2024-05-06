@@ -43,14 +43,14 @@ onMounted(() => {
         <el-card>
           <div>总支出</div>
           <div>
-            ￥{{ getMoney(wallet["wallet"]?.outcome) }}
+            ￥{{ wallet["wallet"]?.outcome }}
           </div>
         </el-card>
       </el-col>
       <el-col :span="12" class="column">
         <el-card>
           <div>当月支出</div>
-          <div>￥{{ getMoney(wallet["wallet"]?.outcome) }}</div>
+          <div>￥{{ wallet["wallet"]?.outcome }}</div>
         </el-card>
       </el-col>
     </el-row>

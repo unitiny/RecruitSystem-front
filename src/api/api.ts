@@ -23,7 +23,8 @@ const demandGroup = {
     put: "/demand/put",
     del: "/demand/del",
     delList: "/demand/delList",
-    uploadMaterial: "/demand/uploadFile"
+    uploadMaterial: "/demand/uploadFile",
+    downloadFile: "/demand/downloadFile",
 }
 
 const userGroup = {
@@ -45,7 +46,9 @@ const userDemandGroup = {
     put: "/userdemand/put",
     del: "/userdemand/del",
     finishUserDemand: "/userdemand/finishUserDemand",
-    getEvaluates: "/userdemand/getEvaluates"
+    getEvaluates: "/userdemand/getEvaluates",
+    getJoinNum: "/userdemand/getJoinNum",
+    agreeJoin: "/userdemand/agreeJoin",
 }
 
 const chatGroup = {
@@ -88,8 +91,11 @@ function GetDemand(did) {
 
 function PutDemand(demand) {
     let dm = copy(demand)
-    if (dm.plan) {
+    if (dm.plan && typeof dm.plan !== "string") {
         dm.plan = JSON.stringify(dm.plan)
+    }
+    if (dm.requires && typeof dm.requires !== "string") {
+        dm.requires = JSON.stringify(dm.requires)
     }
     return request({
         url: demandGroup.put,
@@ -112,10 +118,46 @@ async function GetEngineerParentSkills(): Promise<Object[]> {
     return skillArr
 }
 
+function GetJoinNum(did, publisherID) {
+    return request({
+        url: userDemandGroup.getJoinNum,
+        params: {
+            did: did,
+            publisherID: publisherID
+        }
+    })
+}
+
+function DownloadFile(filePath) {
+    return request({
+        url: demandGroup.downloadFile,
+        method: 'GET',
+        params: {
+            filePath: filePath
+        },
+        responseType: 'blob', // 响应类型为二进制数据
+    }).then((response: any) => {
+        // 创建一个URL对象
+        const url = window.URL.createObjectURL(new Blob([response]));
+        // 创建一个<a>标签
+        const link = document.createElement('a');
+        link.href = url;
+        // 设置文件下载时的文件名
+        link.setAttribute('download', filePath.split('/').pop());
+        // 将<a>标签添加到DOM中
+        document.body.appendChild(link);
+        // 触发点击事件开始下载
+        link.click();
+        // 移除<a>标签
+        link.parentNode.removeChild(link);
+    });
+}
+
 export {
     loginGroup, demandGroup, userGroup,
     engineerGroup, userDemandGroup
     , chatGroup, payGroup, walletGroup, i18n, API,
-    GetUser, GetDemand, PutDemand, GetEngineerParentSkills
+    GetUser, GetDemand, PutDemand, GetEngineerParentSkills,
+    GetJoinNum, DownloadFile
 }
 

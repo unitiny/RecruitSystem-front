@@ -163,12 +163,12 @@ onBeforeMount(() => {
                         <el-col :span="24" class="flex-ai-center">
                           <el-row class="row flex-ai-center">
                             <el-col :span="2">
-                              <span>标题：</span>
+                              <span>名称：</span>
                             </el-col>
                             <el-col :span="18">
                               <el-input
                                   v-model="item.title"
-                                  placeholder="计划标题"
+                                  placeholder="计划名称"
                               />
                             </el-col>
                           </el-row>

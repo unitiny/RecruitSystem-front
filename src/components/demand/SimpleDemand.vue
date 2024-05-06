@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import router from "@/router";
-import {diffDay, getTags, getPaymentWay} from "@/utils/utils";
+import {diffDay, getTags, getPaymentWay, setMoney, getMoney} from "@/utils/utils";
 import {defineProps} from "vue";
 import {global} from "@/static/static";
 import {useGlobalStore} from "@/store/pinia";
@@ -9,13 +9,20 @@ const props = defineProps({
   demand: {
     type: Object,
     required: true
+  },
+  cancelClick: {
+    type: Boolean,
+    required: false,
+    default: false
   }
 })
 
-const avatar = global.path.static + '/img/avatar.jpg'
 const store = useGlobalStore()
 
 function demandDetail(did) {
+  if(props.cancelClick) {
+    return
+  }
   router.push({
     name: "/demand/detail",
     query: {
@@ -23,7 +30,6 @@ function demandDetail(did) {
     }
   })
 }
-
 
 
 </script>
@@ -51,10 +57,9 @@ function demandDetail(did) {
                 <UserFilled/>
               </el-icon>
               &nbsp;
-              <b>1/{{ props.demand.recruitNum }}</b>&nbsp;
+              <b>{{ props.demand.hasRecruitNum }}/{{ props.demand.recruitNum }}</b>&nbsp;
             </el-col>
           </el-row>
-
         </el-col>
       </el-row>
     </el-card>

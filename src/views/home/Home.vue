@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import {Search} from '@element-plus/icons-vue'
-import {ref} from "vue";
+import {ref, onMounted} from "vue";
 import {global} from "@/static/static";
 import {request} from "@/utils/axios";
 import {demandGroup} from "@/api/api";
 import Demand from "@/components/demand/Demand.vue"
-import {diffDay, getTags, getPaymentWay} from "@/utils/utils";
+import {diffDay, getTags, getPaymentWay, setMoney} from "@/utils/utils";
 import router from "@/router";
 import {useGlobalStore} from "@/store/pinia";
 
-const avatar = global.path.static + '/img/avatar.jpg'
 const searchData = ref({
   searchVal: "",
   optionList: [
@@ -211,6 +210,9 @@ function demandDetail(did) {
 function scrollerToTop() {
   scrollerRef.value.scrollTop = 0
 }
+
+onMounted(() => {
+})
 </script>
 
 <template>

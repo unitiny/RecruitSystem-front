@@ -1,30 +1,28 @@
 <script setup lang="ts">
 import {API, chatGroup, GetDemand, GetUser, GetEngineerParentSkills, userDemandGroup} from "@/api/api";
-import {onBeforeMount, onMounted, ref, watchEffect} from "vue"
+import {onBeforeMount, onMounted, ref, watchEffect, nextTick} from "vue"
 import SimpleDemand from "@/components/demand/SimpleDemand.vue"
 import {global} from "@/static/static";
 import {useRoute} from "vue-router";
 import {Chat, Message, MessageMedia, MessageType} from "@/utils/websocket";
 import {useGlobalStore} from "@/store/pinia";
 import {
-  getTime,
-  diffDay,
-  getTags,
-  getPaymentWay,
   getBackTime,
-  getAlias,
-  copy,
-  getDate,
-  getRandomID, checkIfImage, checkIfZip
+  getChatID,
+  elMsgOption,
+  getRandomID,
+  deepJSONParse
 } from "@/utils/utils";
 import {request} from "@/utils/axios";
 import Rate from "@/components/common/Rate.vue"
 import {ElMessage, ElMessageBox, UploadFile, UploadFiles, UploadUserFile} from "element-plus";
 import Cooperate from "@/views/chat/Cooperate.vue";
+import FinishPlan from "@/views/chat/FinishPlan.vue";
 import Chatlist from "@/views/chat/Chatlist.vue";
 import ChatImage from "@/views/chat/ChatImage.vue";
 import Chatzip from "@/views/chat/Chatzip.vue";
 import ChatOperate from "@/views/chat/ChatOperate.vue";
+import FinishItem from "@/views/chat/FinishItem.vue";
 
 const route = useRoute()
 const store = useGlobalStore()
@@ -33,7 +31,6 @@ const apply = {
   finishPlan: 2,
   finishItem: 3
 }
-const avatar = global.path.static + "/img/avatar.jpg"
 
 const chatCardRef = ref(null)
 const scrollerRef = ref(null)
@@ -45,6 +42,7 @@ const pageSet = ref({
 
 const rooms = ref({})
 
+// TODO 发起更新计划后，开发者应看到待审批的状态
 //TODO 有多个聊天inputMsg,cooperate这类要改为数组
 const chat = ref({
   ws: new Chat(),
@@ -64,19 +62,25 @@ const cooperate = ref({
 })
 const finishPlan = ref({
   visible: false,
-  agree: false
+  agree: false,
+  applyVisible: false,
+  applyPlan: {}
 })
 const finishItem = ref({
   visible: false,
   agree: false
+})
+const rate = ref({
+  visible: false
 })
 
 // TODO 聊天界面显示对应需求内容 赋值cooperate.role
 // TODO 已加载rooms,之后有新room创建而无法在rooms中找到。需要服务端通知，客户端动态插入room到rooms
 
 function initChat() {
-  if (chat.value.curChatUserID) {
-    chat.value.curChatID = getChatID(chat.value.curChatUserID, store["user"].id)
+  if (chat.value.curChatUserID && chat.value.curDid) {
+    chat.value.curChatID = getChatID(chat.value.curChatUserID,
+        store["user"].id, chat.value.curDid)
   }
   setWS()
 }
@@ -109,6 +113,7 @@ function setWS() {
 function send(type, content, media?) {
   let msg = new Message({
     id: getRandomID("ws"),
+    did: chat.value.curDid,
     senderID: store["user"].id,
     receiverID: chat.value.curChatUserID,
     chatID: chat.value.curChatID,
@@ -189,28 +194,20 @@ function initRooms() {
       chat.value.curChatID = rooms.value[firstKey].chatID
     }
     exchangeChatUser(chat.value.curChatID) //获取数据
+
     for (const k in rooms.value) {
       rooms.value[k].chatUser.skills = JSON.parse(
           rooms.value[k].chatUser.skills !== ""
-              ? rooms.value[k].chatUser.skills : "{}")
+              ? rooms.value[k].chatUser.skills : "[]")
 
-      rooms.value[k].demand.plan = JSON.parse(
-          rooms.value[k].demand.plan !== ""
-              ? rooms.value[k].demand.plan : "{}")
+      rooms.value[k].demand.plan = deepJSONParse(rooms.value[k].demand.plan)
 
       rooms.value[k].demand.requires = JSON.parse(
           rooms.value[k].demand.requires !== ""
-              ? rooms.value[k].demand.requires : "{}")
+              ? rooms.value[k].demand.requires : "[]")
     }
     console.log(rooms.value)
   })
-}
-
-function getChatID(a: number, b: number) {
-  if (a < b) {
-    return `${a}-${b}`
-  }
-  return `${b}-${a}`
 }
 
 function getChatUserID(room: string) {
@@ -227,6 +224,7 @@ function getApplyMsgData(message: Message) {
       cooperate.value.role = message.applyContent.data.role
       break
     case apply.finishPlan:
+      finishPlan.value.applyPlan = message.applyContent.data.applyPlan
       break
     case apply.finishItem:
       break
@@ -251,13 +249,19 @@ async function exchangeChatUser(chatID) {
     }
   }).then(res => {
     chat.value.curUserDemand = res
+    chat.value.curUserDemand.plan = deepJSONParse(res["plan"])
+    cooperate.value.role = chat.value.curUserDemand.role
+  })
+
+  nextTick(() => {
+    readMessage({})
   })
 }
 
 function agreeJoin() {
   cooperate.value.agree = true
   request({
-    url: userDemandGroup.put,
+    url: userDemandGroup.agreeJoin,
     method: API.PUT,
     data: {
       did: chat.value.curDid,
@@ -280,11 +284,37 @@ function applyJoin() {
 }
 
 function applyFinishPlan() {
-  send(MessageType.apply, apply.finishPlan)
+  finishPlan.value.visible = true
+  finishPlan.value.applyVisible = true
 }
 
 function agreeFinishPlan() {
+  // 更新计划状态
   finishPlan.value.agree = true
+  chat.value.curUserDemand.plan.forEach((p, i) => {
+    if (finishPlan.value.applyPlan[i.toString()]) {
+      p.status = 3
+    }
+  })
+  request({
+    url: userDemandGroup.put,
+    method: API.PUT,
+    data: {
+      did: chat.value.curDid,
+      publisherID: store["user"].id,
+      applicantID: chat.value.curChatUserID,
+      plan: JSON.stringify(chat.value.curUserDemand.plan)
+    }
+  }).then(res => {
+    sendTag({
+      selfContent: "已同意接手需求",
+      otherContent: "对方已同意接手需求"
+    })
+  })
+}
+
+function finishDetail() {
+  finishPlan.value.visible = true
 }
 
 function applyFinishItem() {
@@ -294,6 +324,9 @@ function applyFinishItem() {
       message: "未接手需求",
       type: "error"
     })
+    return
+  } else if (chat.value.curUserDemand.status === 3) {
+    ElMessage(elMsgOption("已完成需求，无需重复申请", "info"))
     return
   }
   send(MessageType.apply, {
@@ -305,7 +338,12 @@ function applyFinishItem() {
   })
 }
 
+function visibleFinishItem() {
+  finishItem.value.visible = true
+}
+
 function agreeFinishItem() {
+  let role = cooperate.value.role
   finishItem.value.agree = true
   request({
     url: userDemandGroup.finishUserDemand,
@@ -314,7 +352,7 @@ function agreeFinishItem() {
       did: chat.value.curDid,
       publisherID: store["user"].id,
       applicantID: chat.value.curChatUserID,
-      role: cooperate.value.role,
+      role: role,
     }
   }).then(res => {
     sendTag({
@@ -322,6 +360,10 @@ function agreeFinishItem() {
       otherContent: "对方已同意完结项目申请"
     })
   })
+}
+
+function visibleRate() {
+  rate.value.visible = !rate.value.visible
 }
 
 function sendTag({selfContent = "", otherContent = ""}) {
@@ -357,6 +399,7 @@ function readMessage(pos) {
       }
     }
   })
+
   if (ids.length > 0) {
     send(MessageType.system, {
       type: 1,
@@ -400,7 +443,7 @@ function setPage() {
 onBeforeMount(async () => {
   chat.value.curChatUserID = parseInt(route.query.uid as string)
   chat.value.curDid = parseInt(route.query.did as string)
-  rooms[chat.value.curChatUserID] = {}
+  // rooms[chat.value.curChatUserID] = {}
 
   creatRoom()
   initChat()
@@ -410,12 +453,17 @@ onBeforeMount(async () => {
 onMounted(() => {
   setPage()
   readMessage({})
+  console.log(chat.value)
 })
 </script>
 
 <template>
-  <Cooperate :cooperate="cooperate" :send="send" :demand="chat.curDemand"></Cooperate>
-  <Rate :visible="finishItem.agree" :udid="chat.curUserDemand.id"></Rate>
+  <!-- 弹窗组件 -->
+  <Cooperate :cooperate="cooperate" :confirm="send" :demand="chat.curDemand"></Cooperate>
+  <FinishPlan :finishItem="finishPlan" :confirm="send" :demand="chat.curUserDemand"></FinishPlan>
+  <FinishItem :finishItem="finishItem" :confirm="agreeFinishItem" :demand="chat.curUserDemand"></FinishItem>
+  <Rate :visible="rate.visible" :udid="chat.curUserDemand.id"></Rate>
+
   <el-row class="chat-main row flex-jc-center" :gutter="50">
     <el-col :span="5">
       <Chatlist :rooms="rooms"
@@ -429,17 +477,26 @@ onMounted(() => {
               <div ref="scrollerRef" class="row">
                 <el-scrollbar @scroll="readMessage" class="scrollbar" :style="{height: pageSet.scrollerHeight}">
                   <el-row class="row flex-center">
-                    <SimpleDemand :demand="chat.curDemand"></SimpleDemand>
+                    <SimpleDemand v-if="chat.curDemand.id > 0" :demand="chat.curDemand"></SimpleDemand>
                   </el-row>
                   <div ref="messageRef" v-for="(item, index) in chat.curMessages" class="chat-block">
                     <el-row>
+                      <!--   时间 -->
                       <el-row v-if="!checkNearTime(index-1, index, 2)"
                               class="row flex-center">
                         {{ getBackTime(item?.time) }}
                       </el-row>
+
+                      <!--   内容 -->
                       <el-row :class="{row: true, line: true,
                 self: item?.senderID === store['user'].id}">
-                        <el-avatar v-if="item?.type !== MessageType.tag" :size="50" :src="avatar"/>
+                        <!-- 头像-->
+                        <el-avatar v-if="item?.type !== MessageType.tag"
+                                   :size="50"
+                                   :src="item?.senderID === store['user'].id ?
+                                   store['user'].avatar : chat.curChatUser?.avatar"/>
+
+                        <!-- 消息 -->
                         <span v-if="item?.type === MessageType.private">
                           <div v-if="item?.media === MessageMedia.text"
                                class="chat-content">
@@ -465,15 +522,16 @@ onMounted(() => {
                       <div v-if="item?.senderID === store['user'].id">{{ item?.applyContent.data.selfContent }}</div>
                       <div v-else>{{ item?.applyContent.data.otherContent }}</div>
                       <div class="flex-center" style="justify-content: space-around;">
+                        <el-button type="primary" @click="finishDetail">更新详情</el-button>
                         <el-button type="primary" @click="agreeFinishPlan">同意</el-button>
                         <el-button>拒绝</el-button>
                       </div>
                     </el-card>
                     <el-card v-else-if="item?.applyContent.type === apply.finishItem" shadow="always" class="chat-card">
-                      <div v-if="item?.senderID === store['user'].id">我发起完结项目申请，等待对方同意</div>
-                      <div v-else>对方发起完结项目申请，是否同意？</div>
+                      <div v-if="item?.senderID === store['user'].id">{{ item?.applyContent.data.selfContent }}</div>
+                      <div v-else>{{ item?.applyContent.data.otherContent }}</div>
                       <div class="flex-center" style="justify-content: space-around;">
-                        <el-button type="primary" @click="agreeFinishItem">同意</el-button>
+                        <el-button type="primary" @click="visibleFinishItem">同意</el-button>
                         <el-button>拒绝</el-button>
                       </div>
                     </el-card>
@@ -496,14 +554,15 @@ onMounted(() => {
               <ChatOperate :send="send"
                            :apply-join="applyJoin"
                            :apply-finish-plan="applyFinishPlan"
-                           :apply-finish-item="applyFinishItem"></ChatOperate>
+                           :apply-finish-item="applyFinishItem"
+                           :rate="visibleRate"></ChatOperate>
               <el-row class="row input-area">
                 <el-col :span="24">
                   <el-input @keydown.enter="privateSend($event)"
                             v-model="chat.inputMsg"
                             :autosize="{ minRows: 1, maxRows: 4 }"
                             type="textarea"
-                            placeholder="Please input"/>
+                            placeholder="请输入"/>
                 </el-col>
               </el-row>
               <el-row class="row send-area">
@@ -523,22 +582,6 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-:deep(.el-input__wrapper) {
-  box-shadow: none !important;
-  // border-bottom: 1px solid black;
-  border-radius: 0;
-}
-
-:deep(.el-textarea__inner ) {
-  box-shadow: none !important;
-}
-
-:deep(.el-textarea ) {
-  .el-textarea__inner {
-    resize: none; // 去除右下角图标
-  }
-}
-
 
 .chat-main {
   padding-top: 10px;
@@ -607,6 +650,21 @@ onMounted(() => {
 
       .input-area {
         height: 80px;
+        :deep(.el-input__wrapper) {
+          box-shadow: none !important;
+          // border-bottom: 1px solid black;
+          border-radius: 0;
+        }
+
+        :deep(.el-textarea__inner ) {
+          box-shadow: none !important;
+        }
+
+        :deep(.el-textarea ) {
+          .el-textarea__inner {
+            resize: none; // 去除右下角图标
+          }
+        }
       }
 
       .send-area {
@@ -620,18 +678,6 @@ onMounted(() => {
         width: 80px;
       }
     }
-  }
-}
-
-.chat-item {
-  padding: 10px 5px;
-  border-bottom: solid 1px #999999;
-
-  .content {
-    display: flex;
-    justify-content: center;
-    align-items: start;
-    flex-direction: column;
   }
 }
 

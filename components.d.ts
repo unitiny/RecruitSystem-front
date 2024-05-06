@@ -76,6 +76,7 @@ declare module 'vue' {
     Mask: typeof import('./src/components/common/Mask.vue')['default']
     PersonInfomation: typeof import('./src/components/PersonInfomation.vue')['default']
     PersonInformation: typeof import('./src/components/PersonInformation.vue')['default']
+    Plan: typeof import('./src/components/demand/Plan.vue')['default']
     QRCode: typeof import('./src/components/common/QRCode.vue')['default']
     Rate: typeof import('./src/components/common/Rate.vue')['default']
     Register: typeof import('./src/components/login-register/Register.vue')['default']

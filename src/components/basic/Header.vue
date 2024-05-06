@@ -4,13 +4,14 @@ import {global} from "@/static/static"
 import {Message, Plus} from "@element-plus/icons-vue";
 import {useRouter} from "vue-router";
 import config from "/config.json";
+import {elMsgOption, getAvatar} from "@/utils/utils";
 import {useGlobalStore} from "@/store/pinia";
 import PersonInformation from "@/components/PersonInformation.vue"
 
 const router = useRouter()
 const store = useGlobalStore()
 const logo = global.path.static + '/img/logo.jpeg'
-const avatar = global.path.static + '/img/avatar.jpg'
+
 const es = ref(new EventSource(config.baseURL + "/notify/sse"))
 
 const navData = ref({
@@ -41,11 +42,11 @@ const messageData = ref([
     path: "/chat/privatechat",
     notify: 0,
   },
-  {
-    text: "群聊消息",
-    path: "/chat/privatechat",
-    notify: 0,
-  },
+  // {
+  //   text: "群聊消息",
+  //   path: "/chat/privatechat",
+  //   notify: 0,
+  // },
   {
     text: "我的消息",
     path: "/chat/privatechat",
@@ -89,6 +90,8 @@ function walletPath() {
 
 function loginOut() {
   store.updateUser({})
+  ElMessage(elMsgOption("退出登录成功"))
+  location.reload()
 }
 
 function login() {
@@ -105,6 +108,9 @@ function successHook(firstLogin) {
   if (firstLogin) {
     loginData.value.infoMaskVisible = true
   }
+  setTimeout(() => {
+    location.reload()
+  }, 1000)
 }
 
 function maskTick() {
@@ -122,6 +128,10 @@ function exchangeNav(index: number) {
 }
 
 function pubDemand() {
+  if (!hasLogin()) {
+    ElMessage(elMsgOption("请先登录"))
+    return
+  }
   router.push("/demand/pub")
 }
 
@@ -131,6 +141,10 @@ function goHome() {
 }
 
 function skip(item) {
+  if (!hasLogin() && item.text !== "退出登录") {
+    ElMessage(elMsgOption("请先登录"))
+    return
+  }
   if (item.notify && item.notify > 0) {
     item.notify = 0
   }
@@ -141,7 +155,7 @@ function skip(item) {
   }
 }
 
-onMounted(() => {
+function sse() {
   //TODO 路由为聊天界面不通知
   let key = "Private" + store["user"].id
   es.value.addEventListener(key, (event) => {
@@ -156,6 +170,17 @@ onMounted(() => {
         break
     }
   })
+}
+
+function hasLogin() {
+  return JSON.stringify(store["user"]) !== "{}"
+}
+
+onMounted(() => {
+  sse()
+  if (!hasLogin()) {
+    login()
+  }
 })
 </script>
 
@@ -173,7 +198,7 @@ onMounted(() => {
     </el-col>
     <el-col :span="6">
       <el-row justify="start" align="middle">
-        <el-button v-if="store['user'].identity === 1"  @click="pubDemand" type="primary" style="margin-right: 20px;">
+        <el-button v-if="store['user'].identity === 1" @click="pubDemand" type="primary" style="margin-right: 20px;">
           发布需求
           <el-icon class="el-icon--right">
             <Plus/>
@@ -195,7 +220,7 @@ onMounted(() => {
           </template>
         </el-dropdown>
         <el-dropdown>
-          <el-avatar @click="login" :size="40" :src="avatar" style="margin-right: 10px;"/>
+          <el-avatar @click="login" :size="40" :src="store['user'].avatar" style="margin-right: 10px;"/>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item v-for="item in userData" @click="skip(item)">{{ item.text }}</el-dropdown-item>
@@ -241,7 +266,8 @@ onMounted(() => {
 .logo {
   width: 100%;
   height: 100%;
-  .el-image{
+
+  .el-image {
     width: 100%;
     height: 100%;
   }
