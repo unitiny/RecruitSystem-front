@@ -3,8 +3,8 @@ import {API, chatGroup, GetDemand, GetUser, GetEngineerParentSkills, userDemandG
 import {onBeforeMount, onMounted, ref, watchEffect, nextTick} from "vue"
 import SimpleDemand from "@/components/demand/SimpleDemand.vue"
 import {global} from "@/static/static";
-import {useRoute} from "vue-router";
-import {Chat, Message, MessageMedia, MessageType} from "@/utils/websocket";
+import {useRoute, useRouter} from "vue-router";
+import {Chat, Message, MessageMedia, MessageType, SystemType} from "@/utils/websocket";
 import {useGlobalStore} from "@/store/pinia";
 import {
   getBackTime,
@@ -25,6 +25,7 @@ import ChatOperate from "@/views/chat/ChatOperate.vue";
 import FinishItem from "@/views/chat/FinishItem.vue";
 
 const route = useRoute()
+const router = useRouter()
 const store = useGlobalStore()
 const apply = {
   join: 1,
@@ -34,6 +35,8 @@ const apply = {
 
 const chatCardRef = ref(null)
 const scrollerRef = ref(null)
+const elScrollerRef = ref(null)
+const innerRef = ref(null)
 const messageRef = ref([])
 const pageSet = ref({
   scrollerHeight: "400px",
@@ -89,24 +92,43 @@ function setWS() {
   chat.value.ws.connWebsocket(store["user"].token)
   chat.value.ws.socket.onmessage = async (event) => {
     let message = JSON.parse(event.data)
-    console.log(message)
+    console.log("receive", message)
     switch (message.type) {
       case MessageType.private:
+        switch (message.media) {
+          case MessageMedia.apply:
+            getApplyMsgData(message)
+            break
+          case MessageMedia.tag:
+            break
+        }
         privateReceive(message)
         break
       case MessageType.group:
         break
       case MessageType.system:
-        updateMessage(message)
-        break
-      case MessageType.apply:
-        getApplyMsgData(message)
-        privateReceive(message)
-        break
-      case MessageType.tag:
-        privateReceive(message)
+        switch (message.systemContent.type) {
+          case SystemType.read:
+            updateMessage(message)
+            break
+          case SystemType.agreeJoin:
+            getUserDemand()
+            cooperate.value.role = message.systemContent.data.role
+            break
+          case SystemType.agreeFinishPlan:
+            let i = message.systemContent.data.index
+            if (i < chat.value.curUserDemand.plan.length) {
+              chat.value.curUserDemand.plan[i].status = message.systemContent.data.status
+            }
+            break
+          case SystemType.agreeFinishItem:
+            break
+        }
         break
     }
+    nextTick(() => {
+      readMessage() //每次收到消息都检查未读
+    })
   }
 }
 
@@ -118,13 +140,13 @@ function send(type, content, media?) {
     receiverID: chat.value.curChatUserID,
     chatID: chat.value.curChatID,
     type: type,
-    media: media ? media : 1,
+    media: media ? media : MessageMedia.text,
     content: content, //new里根据type写入不同content了
     time: new Date()
   })
+  console.log("send", msg)
   //TODO privateReceive消息数据不完善 ？
-  if (type === MessageType.private || type === MessageType.tag ||
-      type === MessageType.apply || type === MessageType.group) {
+  if (type === MessageType.private || type === MessageType.group) {
     privateReceive(msg) //先发给自己
   } else if (type === MessageType.system) {
     updateMessage(msg) //更新自己的消息
@@ -206,7 +228,6 @@ function initRooms() {
           rooms.value[k].demand.requires !== ""
               ? rooms.value[k].demand.requires : "[]")
     }
-    console.log(rooms.value)
   })
 }
 
@@ -231,14 +252,7 @@ function getApplyMsgData(message: Message) {
   }
 }
 
-async function exchangeChatUser(chatID) {
-  chat.value.curChatID = chatID
-  chat.value.curDid = rooms.value[chatID].demand.id
-  chat.value.curDemand = rooms.value[chatID].demand
-  chat.value.curChatUser = rooms.value[chatID].chatUser
-  chat.value.curChatUserID = rooms.value[chatID].chatUser.id
-  chat.value.curMessages = rooms.value[chatID].messages
-
+function getUserDemand() {
   request({
     url: userDemandGroup.getUserDemand,
     params: {
@@ -246,19 +260,34 @@ async function exchangeChatUser(chatID) {
       publisherID: chat.value.curDemand.uid,
       applicantID: chat.value.curDemand.uid === chat.value.curChatUserID ?
           store["user"].id : chat.value.curChatUserID,
+      role: cooperate.value.role
     }
   }).then(res => {
     chat.value.curUserDemand = res
     chat.value.curUserDemand.plan = deepJSONParse(res["plan"])
     cooperate.value.role = chat.value.curUserDemand.role
   })
+}
+
+async function exchangeChatUser(chatID) {
+  chat.value.curChatID = chatID
+  chat.value.curDid = rooms.value[chatID].demand.id
+  chat.value.curDemand = rooms.value[chatID].demand
+  chat.value.curChatUser = rooms.value[chatID].chatUser
+  chat.value.curChatUserID = rooms.value[chatID].chatUser.id
+  chat.value.curMessages = rooms.value[chatID].messages
+  getUserDemand()
 
   nextTick(() => {
-    readMessage({})
+    readMessage()
+    elScrollerRef.value!.setScrollTop(innerRef.value.clientHeight)
   })
 }
 
 function agreeJoin() {
+  if (store['user'].identity !== 1) {
+    return
+  }
   cooperate.value.agree = true
   request({
     url: userDemandGroup.agreeJoin,
@@ -272,6 +301,12 @@ function agreeJoin() {
       status: 2,
     }
   }).then(res => {
+    send(MessageType.system, {
+      type: SystemType.agreeJoin,
+      data: {
+        role: cooperate.value.role
+      }
+    })
     sendTag({
       selfContent: "已同意接手需求",
       otherContent: "对方已同意接手需求"
@@ -280,6 +315,13 @@ function agreeJoin() {
 }
 
 function applyJoin() {
+  if(chat.value.curDemand.hasRecruitNum >= chat.value.curDemand.recruitNum) {
+    ElMessage(elMsgOption("招募人数已满，无法接手该需求", "error"))
+    return
+  }else if(cooperate.value.role !== 0) {
+    ElMessage(elMsgOption("已接手该需求，不可重复申请", "error"))
+    return
+  }
   cooperate.value.visible = true
 }
 
@@ -289,13 +331,38 @@ function applyFinishPlan() {
 }
 
 function agreeFinishPlan() {
+  if (store['user'].identity !== 1) {
+    return
+  }
+
   // 更新计划状态
+  let index = 0
+  let status = 3
   finishPlan.value.agree = true
   chat.value.curUserDemand.plan.forEach((p, i) => {
     if (finishPlan.value.applyPlan[i.toString()]) {
-      p.status = 3
+      chat.value.curUserDemand.plan[i].status = status
+      index = i
     }
   })
+
+  request({
+    url: userDemandGroup.finishUserDemandPlan,
+    method: API.POST,
+    params: {
+      index
+    },
+    data: {
+      did: chat.value.curDid,
+      publisherID: store["user"].id,
+      applicantID: chat.value.curChatUserID,
+      plan: JSON.stringify(chat.value.curUserDemand.plan),
+      role: cooperate.value.role,
+    }
+  }).then(res => {
+    console.log(res)
+  })
+
   request({
     url: userDemandGroup.put,
     method: API.PUT,
@@ -306,9 +373,16 @@ function agreeFinishPlan() {
       plan: JSON.stringify(chat.value.curUserDemand.plan)
     }
   }).then(res => {
+    send(MessageType.system, {
+      type: SystemType.agreeFinishPlan,
+      data: {
+        status,
+        index
+      }
+    })
     sendTag({
-      selfContent: "已同意接手需求",
-      otherContent: "对方已同意接手需求"
+      selfContent: "已同意更新计划",
+      otherContent: "对方已同意更新计划"
     })
   })
 }
@@ -329,20 +403,27 @@ function applyFinishItem() {
     ElMessage(elMsgOption("已完成需求，无需重复申请", "info"))
     return
   }
-  send(MessageType.apply, {
+  send(MessageType.private, {
     type: apply.finishItem,
     data: {
       selfContent: `我发起完成计划申请，等待对方同意`,
       otherContent: `对方发起完成计划申请，是否同意？`,
     }
-  })
+  }, MessageMedia.apply)
 }
 
 function visibleFinishItem() {
+  if (store['user'].identity !== 1) {
+    return
+  }
   finishItem.value.visible = true
 }
 
 function agreeFinishItem() {
+  if (store['user'].identity !== 1) {
+    return
+  }
+
   let role = cooperate.value.role
   finishItem.value.agree = true
   request({
@@ -367,25 +448,16 @@ function visibleRate() {
 }
 
 function sendTag({selfContent = "", otherContent = ""}) {
-  send(MessageType.tag, {
+  send(MessageType.private, {
     data: {
       selfContent: selfContent,
       otherContent: otherContent,
     }
-  })
-}
-
-function test() {
-  if (store["user"].id === 1) {
-    route.query.uid = "3"
-  } else {
-    route.query.uid = "1"
-  }
-  route.query.did = "19"
+  }, MessageMedia.tag)
 }
 
 // 置为已读消息
-function readMessage(pos) {
+function readMessage(pos = {}) {
   let ids = []
   let scrollerRect = scrollerRef.value.getBoundingClientRect()
   messageRef.value.forEach((itemRef, index) => {
@@ -435,9 +507,18 @@ function checkNearTime(prev, next, diff) {
   return minutesDiff <= diff
 }
 
-function setPage() {
+async function setPage() {
   pageSet.value.scrollerHeight = `${chatCardRef.value.offsetHeight * 0.7}px`
   pageSet.value.inputHeight = `${chatCardRef.value.offsetHeight * 0.3}px`
+}
+
+function skipInfo(uid) {
+  router.push({
+    name: "/user/information",
+    query: {
+      uid: uid,
+    }
+  })
 }
 
 onBeforeMount(async () => {
@@ -452,16 +533,17 @@ onBeforeMount(async () => {
 
 onMounted(() => {
   setPage()
-  readMessage({})
-  console.log(chat.value)
+  readMessage()
+  console.log("rooms", rooms.value)
+  console.log("chat", chat.value)
 })
 </script>
 
 <template>
   <!-- 弹窗组件 -->
   <Cooperate :cooperate="cooperate" :confirm="send" :demand="chat.curDemand"></Cooperate>
-  <FinishPlan :finishItem="finishPlan" :confirm="send" :demand="chat.curUserDemand"></FinishPlan>
-  <FinishItem :finishItem="finishItem" :confirm="agreeFinishItem" :demand="chat.curUserDemand"></FinishItem>
+  <FinishPlan :finishPlan="finishPlan" :confirm="send" :demand="chat.curUserDemand"></FinishPlan>
+  <FinishItem :finishItem="finishItem" :confirm="agreeFinishItem" :demand="chat.curDemand"></FinishItem>
   <Rate :visible="rate.visible" :udid="chat.curUserDemand.id"></Rate>
 
   <el-row class="chat-main row flex-jc-center" :gutter="50">
@@ -475,29 +557,32 @@ onMounted(() => {
           <el-row class="row chat-board">
             <el-row class="row">
               <div ref="scrollerRef" class="row">
-                <el-scrollbar @scroll="readMessage" class="scrollbar" :style="{height: pageSet.scrollerHeight}">
-                  <el-row class="row flex-center">
-                    <SimpleDemand v-if="chat.curDemand.id > 0" :demand="chat.curDemand"></SimpleDemand>
-                  </el-row>
-                  <div ref="messageRef" v-for="(item, index) in chat.curMessages" class="chat-block">
-                    <el-row>
-                      <!--   时间 -->
-                      <el-row v-if="!checkNearTime(index-1, index, 2)"
-                              class="row flex-center">
-                        {{ getBackTime(item?.time) }}
-                      </el-row>
+                <el-scrollbar @scroll="readMessage" ref="elScrollerRef" class="scrollbar"
+                              :style="{height: pageSet.scrollerHeight}">
+                  <div ref="innerRef">
+                    <el-row class="row flex-center">
+                      <SimpleDemand v-if="chat.curDemand.id > 0" :demand="chat.curDemand"></SimpleDemand>
+                    </el-row>
+                    <div ref="messageRef" v-for="(item, index) in chat.curMessages" class="chat-block">
+                      <el-row>
+                        <!--   时间 -->
+                        <el-row v-if="!checkNearTime(index-1, index, 2)"
+                                class="row flex-center">
+                          {{ getBackTime(item?.time) }}
+                        </el-row>
 
-                      <!--   内容 -->
-                      <el-row :class="{row: true, line: true,
+                        <!--   内容 -->
+                        <el-row :class="{row: true, line: true,
                 self: item?.senderID === store['user'].id}">
-                        <!-- 头像-->
-                        <el-avatar v-if="item?.type !== MessageType.tag"
-                                   :size="50"
-                                   :src="item?.senderID === store['user'].id ?
+                          <!-- 头像-->
+                          <el-avatar v-if="item?.media !== MessageMedia.tag"
+                                     @click="skipInfo(item?.senderID)"
+                                     :size="50"
+                                     :src="item?.senderID === store['user'].id ?
                                    store['user'].avatar : chat.curChatUser?.avatar"/>
 
-                        <!-- 消息 -->
-                        <span v-if="item?.type === MessageType.private">
+                          <!-- 消息 -->
+                          <span v-if="item?.type === MessageType.private">
                           <div v-if="item?.media === MessageMedia.text"
                                class="chat-content">
                             {{ item?.privateContent }}
@@ -508,44 +593,55 @@ onMounted(() => {
                           <span v-else-if="item?.media === MessageMedia.zip">
                             <Chatzip :message="item" :download-file="downloadFile"></Chatzip>
                           </span>
+                          <span v-else-if="item?.media === MessageMedia.apply">
+                              <el-card v-if="item?.applyContent.type === apply.join" shadow="always" class="chat-card">
+                                <div v-if="item?.senderID === store['user'].id">{{
+                                    item?.applyContent.data.selfContent
+                                  }}</div>
+                                <div v-else>{{ item?.applyContent.data.otherContent }}</div>
+                                <div class="flex-center" style="justify-content: space-around;">
+                                  <el-button type="primary" @click="agreeJoin">同意</el-button>
+                                  <el-button>拒绝</el-button>
+                                </div>
+                              </el-card>
+                              <el-card v-else-if="item?.applyContent.type === apply.finishPlan" shadow="always"
+                                       class="chat-card">
+                                <div v-if="item?.senderID === store['user'].id">
+                                  {{ item?.applyContent.data.selfContent }}
+                                </div>
+                                <div v-else>{{ item?.applyContent.data.otherContent }}</div>
+                                <div class="flex-center" style="justify-content: space-around;">
+                                  <el-button type="primary" @click="finishDetail">更新详情</el-button>
+                                  <el-button type="primary" @click="agreeFinishPlan">同意</el-button>
+                                  <el-button>拒绝</el-button>
+                                </div>
+                              </el-card>
+                              <el-card v-else-if="item?.applyContent.type === apply.finishItem" shadow="always"
+                                       class="chat-card">
+                                 <div v-if="item?.senderID === store['user'].id">{{
+                                     item?.applyContent.data.selfContent
+                                   }}</div>
+                                 <div v-else>{{ item?.applyContent.data.otherContent }}</div>
+                                 <div class="flex-center" style="justify-content: space-around;">
+                                   <el-button type="primary" @click="visibleFinishItem">同意</el-button>
+                                   <el-button>拒绝</el-button>
+                                 </div>
+                              </el-card>
+                          </span>
                         </span>
-                        <span v-else-if="item?.type === MessageType.apply">
-                    <el-card v-if="item?.applyContent.type === apply.join" shadow="always" class="chat-card">
-                      <div v-if="item?.senderID === store['user'].id">{{ item?.applyContent.data.selfContent }}</div>
-                      <div v-else>{{ item?.applyContent.data.otherContent }}</div>
-                      <div class="flex-center" style="justify-content: space-around;">
-                        <el-button type="primary" @click="agreeJoin">同意</el-button>
-                        <el-button>拒绝</el-button>
-                      </div>
-                    </el-card>
-                    <el-card v-else-if="item?.applyContent.type === apply.finishPlan" shadow="always" class="chat-card">
-                      <div v-if="item?.senderID === store['user'].id">{{ item?.applyContent.data.selfContent }}</div>
-                      <div v-else>{{ item?.applyContent.data.otherContent }}</div>
-                      <div class="flex-center" style="justify-content: space-around;">
-                        <el-button type="primary" @click="finishDetail">更新详情</el-button>
-                        <el-button type="primary" @click="agreeFinishPlan">同意</el-button>
-                        <el-button>拒绝</el-button>
-                      </div>
-                    </el-card>
-                    <el-card v-else-if="item?.applyContent.type === apply.finishItem" shadow="always" class="chat-card">
-                      <div v-if="item?.senderID === store['user'].id">{{ item?.applyContent.data.selfContent }}</div>
-                      <div v-else>{{ item?.applyContent.data.otherContent }}</div>
-                      <div class="flex-center" style="justify-content: space-around;">
-                        <el-button type="primary" @click="visibleFinishItem">同意</el-button>
-                        <el-button>拒绝</el-button>
-                      </div>
-                    </el-card>
-                  </span>
-                        <span v-else-if="item?.type === MessageType.tag" class="tag-content">
-                    <div v-if="item?.senderID === store['user'].id">{{ item?.tagContent.data.selfContent }}</div>
-                    <div v-else>{{ item?.tagContent.data.otherContent }}</div>
-                  </span>
-                        <span v-if="item?.type !== MessageType.tag" class="read-font">
-                        <span v-if="item?.hasRead">已读</span>
-                        <span v-else style="color: #e04848">未读</span>
-                      </span>
+                          <span v-if="item?.media === MessageMedia.tag" class="tag-content">
+                            <div v-if="item?.senderID === store['user'].id">{{
+                                item?.tagContent.data.selfContent
+                              }}</div>
+                            <div v-else>{{ item?.tagContent.data.otherContent }}</div>
+                          </span>
+                          <span v-if="item?.media !== MessageMedia.tag" class="read-font">
+                            <span v-if="item?.hasRead">已读</span>
+                            <span v-else style="color: #e04848">未读</span>
+                        </span>
+                        </el-row>
                       </el-row>
-                    </el-row>
+                    </div>
                   </div>
                 </el-scrollbar>
               </div>
@@ -650,6 +746,7 @@ onMounted(() => {
 
       .input-area {
         height: 80px;
+
         :deep(.el-input__wrapper) {
           box-shadow: none !important;
           // border-bottom: 1px solid black;

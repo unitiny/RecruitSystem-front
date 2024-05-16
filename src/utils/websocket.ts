@@ -51,19 +51,22 @@ class Message {
                 this.pingContent = content
                 break
             case MessageType.private:
-                this.privateContent = content
+                switch (media) {
+                    case MessageMedia.apply:
+                        this.applyContent = content
+                        break
+                    case MessageMedia.tag:
+                        this.tagContent = content
+                        break
+                    default:
+                        this.privateContent = content
+                }
                 break
             case MessageType.group:
                 this.groupContent = content
                 break
             case MessageType.system:
                 this.systemContent = content
-                break
-            case MessageType.apply:
-                this.applyContent = content
-                break
-            case MessageType.tag:
-                this.tagContent = content
                 break
         }
     }
@@ -85,6 +88,13 @@ const MessageMedia = {
     zip: 3,
     apply: 4,
     tag: 5
+}
+
+const SystemType = {
+    read: 1,
+    agreeJoin: 2,
+    agreeFinishPlan: 3,
+    agreeFinishItem: 4,
 }
 
 class Chat {
@@ -153,4 +163,4 @@ class Chat {
     }
 }
 
-export {Chat, Message, MessageType, MessageMedia}
+export {Chat, Message, MessageType, MessageMedia, SystemType}

@@ -39,7 +39,7 @@ const loginData = ref({
 const messageData = ref([
   {
     text: "系统通知",
-    path: "/chat/privatechat",
+    path: "/system/notify",
     notify: 0,
   },
   // {
@@ -57,19 +57,28 @@ const messageData = ref([
 const userData = ref([
   {
     text: "我的资料",
-    path: "/user/information"
+    path: "/user/information",
+    visible: true
   },
   {
     text: "我的需求",
-    path: userDemandPath
+    path: userDemandPath,
+    visible: true
+  },
+  {
+    text: "我的评价",
+    path: "/user/rates",
+    visible: store['user'].identity !== 1
   },
   {
     text: "我的钱包",
-    path: walletPath
+    path: walletPath,
+    visible: true
   },
   {
     text: "退出登录",
-    path: loginOut
+    path: loginOut,
+    visible: true
   },
 ])
 
@@ -155,14 +164,14 @@ function skip(item) {
   }
 }
 
-function sse() {
+function chatSSE() {
   //TODO 路由为聊天界面不通知
   let key = "Private" + store["user"].id
   es.value.addEventListener(key, (event) => {
     let message = JSON.parse(event["data"])
     switch (message.type) {
       case "Private":
-        messageData.value[2].notify += 1
+        messageData.value[1].notify += 1
         break
       case "Group":
         break
@@ -172,12 +181,20 @@ function sse() {
   })
 }
 
+function systemSSE() {
+  let key = "System" + store["user"].id
+  es.value.addEventListener(key, (event) => {
+    messageData.value[0].notify += 1
+  })
+}
+
 function hasLogin() {
   return JSON.stringify(store["user"]) !== "{}"
 }
 
 onMounted(() => {
-  sse()
+  chatSSE()
+  systemSSE()
   if (!hasLogin()) {
     login()
   }
@@ -223,7 +240,9 @@ onMounted(() => {
           <el-avatar @click="login" :size="40" :src="store['user'].avatar" style="margin-right: 10px;"/>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item v-for="item in userData" @click="skip(item)">{{ item.text }}</el-dropdown-item>
+              <div v-for="item in userData">
+                <el-dropdown-item @click="skip(item)" v-if="item.visible">{{ item.text }}</el-dropdown-item>
+              </div>
             </el-dropdown-menu>
           </template>
         </el-dropdown>

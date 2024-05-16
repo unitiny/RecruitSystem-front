@@ -18,6 +18,7 @@ const props = defineProps({
   demand: {}
 })
 const store = useGlobalStore()
+
 const demand = computed(() => props.demand)
 const skills = ref([])
 const userDemandList = ref([])
@@ -30,6 +31,12 @@ const menu = ref([
   }
 ])
 const activeIndex = ref("0")
+const curPlan = computed(() => {
+  if (udIndex() >= userDemandList.value.length) {
+    return []
+  }
+  return userDemandList.value[udIndex()]?.plan
+})
 
 const handleSelect = (key: string, keyPath: string[]) => {
   activeIndex.value = key
@@ -87,6 +94,9 @@ function changePlan(way) {
 }
 
 function changeUserPlan(way) {
+  if (udIndex() >= userDemandList.value.length) {
+    return []
+  }
   if (way > 0) {
     userDemandList.value[udIndex()].plan.push(<Plan>{
       time: "",
@@ -256,7 +266,7 @@ defineExpose({updateDemand, check})
           </el-col>
         </el-row>
         <el-timeline>
-          <el-timeline-item v-for="item in userDemandList[udIndex()].plan" center>
+          <el-timeline-item v-for="item in curPlan" center>
             <div class="flex-ai-center" style="margin: 5px 0;">
               <el-icon :size="18">
                 <Timer/>
@@ -281,7 +291,7 @@ defineExpose({updateDemand, check})
                 <el-col :span="12" class="card-right">
                   <el-row class="row card-fee">
                     报酬：&nbsp;&nbsp;
-                    <el-slider v-model="item.fee" :format-tooltip="formatTooltip"/>
+                    <el-slider show-input v-model="item.fee" :format-tooltip="formatTooltip"/>
                   </el-row>
                 </el-col>
               </el-row>

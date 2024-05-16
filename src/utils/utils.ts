@@ -26,6 +26,24 @@ function getAvatar(store) {
     return global.path.static + '/img/avatar.jpg'
 }
 
+function getDateTime(inputDate) {
+    // 创建一个新的 Date 对象
+    let date = new Date(inputDate);
+
+    // 获取年份、月份和日期
+    let year = date.getFullYear();
+    let month = (date.getMonth() + 1).toString().padStart(2, '0'); // 月份从 0 开始，所以要加 1
+    let day = date.getDate().toString().padStart(2, '0');
+
+    // 获取小时和分钟
+    let hours = date.getHours().toString().padStart(2, '0');
+    let minutes = date.getMinutes().toString().padStart(2, '0');
+
+    // 格式化日期和时间字符串
+    return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
+}
+
+
 function getDate(s: string): string {
     let date = new Date();
 
@@ -210,7 +228,7 @@ function checkValue(...values) {
 export {
     errorText, diffDay, getPaymentWay,
     getTags, getMoney, setMoney, formatMoney, getSkills,
-    getDate, getTime, getRandomNum,
+    getDateTime, getDate, getTime, getRandomNum,
     getAliasArr, getAlias, copy, deepJSONParse,
     getBackTime, getRandomID, checkIfImage,
     checkIfZip, elMsgOption, getChatID, getFileName,

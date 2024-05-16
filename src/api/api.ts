@@ -46,7 +46,9 @@ const userDemandGroup = {
     put: "/userdemand/put",
     del: "/userdemand/del",
     finishUserDemand: "/userdemand/finishUserDemand",
+    finishUserDemandPlan: "/userdemand/finishUserDemandPlan",
     getEvaluates: "/userdemand/getEvaluates",
+    getRates: "/userdemand/getUserRates",
     getJoinNum: "/userdemand/getJoinNum",
     agreeJoin: "/userdemand/agreeJoin",
 }
@@ -67,6 +69,10 @@ const walletGroup = {
     list: "/wallet/list",
     getBasicData: "/wallet/getBasicData",
     draw: "/wallet/draw"
+}
+
+const systemMessageGroup = {
+    list: "/systemMessage/list",
 }
 
 const i18n = "/i18n"
@@ -157,6 +163,7 @@ export {
     loginGroup, demandGroup, userGroup,
     engineerGroup, userDemandGroup
     , chatGroup, payGroup, walletGroup, i18n, API,
+    systemMessageGroup,
     GetUser, GetDemand, PutDemand, GetEngineerParentSkills,
     GetJoinNum, DownloadFile
 }

@@ -98,6 +98,24 @@ function confirm() {
   privateChat(choose.value.did, choose.value.uid)
 }
 
+function skipRates(uid) {
+  router.push({
+    name: "/user/rates",
+    query: {
+      uid: uid,
+    }
+  })
+}
+
+function skipInfo(uid) {
+  router.push({
+    name: "/user/information",
+    query: {
+      uid: uid,
+    }
+  })
+}
+
 onMounted(() => {
   getDevelopers()
   getEvaluates()
@@ -112,7 +130,7 @@ onMounted(() => {
         <el-col v-for="item in developers" :span="7" class="card">
           <el-row class="row">
             <el-col :span="10" class="avatar-area">
-              <el-avatar :size="80" :src="item?.avatar" style="margin-right: 10px;"/>
+              <el-avatar @click="skipInfo(item?.id)" :size="80" :src="item?.avatar" style="margin-right: 10px;"/>
               <div class="operate row">
                 <el-button v-if="store['user']?.identity === 1"
                            @click="visibleDemands(item?.id)"
@@ -162,7 +180,7 @@ onMounted(() => {
               <div>评价分</div>
               <div>{{ evaluates[item.id]?.rate ?? 0 }}</div>
             </div>
-            <div>
+            <div @click="skipRates(item?.id)">
               <div>评价数</div>
               <div>{{ evaluates[item.id]?.rateNum ?? 0 }}</div>
             </div>

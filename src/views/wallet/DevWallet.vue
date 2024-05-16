@@ -77,16 +77,22 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
-    <el-row class="row wallet" :gutter="20">
-      <el-col :span="8" class="column">
+  <div class="main">
+    <el-row class="row wallet">
+      <el-col :span="7" class="column">
         <el-card>
-          <div>可用金额</div>
-          <div>
-            ￥{{ wallet["wallet"]?.balanceFee }}
+          <div class="draw">
+            <div>
+              <div>
+                可用金额
+              </div>
+              <div>
+                ￥{{ wallet["wallet"]?.balanceFee }}
+              </div>
+            </div>
+            <el-button @click="withdraw.visible=true" type="success">提现</el-button>
           </div>
           <div>
-            <el-button @click="withdraw.visible=true" type="success">提现</el-button>
             <el-dialog
                 v-model="withdraw.visible"
                 title="提现"
@@ -119,13 +125,13 @@ onMounted(() => {
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8" class="column">
+      <el-col :span="7" class="column">
         <el-card>
           <div>当月收入</div>
           <div>￥{{ wallet["wallet"]?.balanceFee }}</div>
         </el-card>
       </el-col>
-      <el-col :span="8" class="column">
+      <el-col :span="7" class="column">
         <el-card>
           <div>当月提现</div>
           <div>￥{{ wallet["wallet"]?.balanceFee }}</div>
@@ -133,23 +139,23 @@ onMounted(() => {
       </el-col>
     </el-row>
     <el-row class="row">
-      <el-card>
+      <el-card class="row">
         <el-tabs v-model="tabActiveName" class="demo-tabs" @tab-click="handleClick">
           <el-tab-pane label="收款" name="income">
             <el-table :data="incomeList" style="width: 100%">
-              <el-table-column prop="orderID" label="流水号" width="200"/>
-              <el-table-column prop="date" label="日期" width="150"/>
-              <el-table-column prop="originUserName" label="付款方" width="120"/>
-              <el-table-column prop="fee" label="金额" width="100"/>
+              <el-table-column prop="orderID" label="流水号" width="300"/>
+              <el-table-column prop="date" label="日期" width="200"/>
+              <el-table-column prop="originUserName" label="付款方" width="200"/>
+              <el-table-column prop="fee" label="金额" width="200"/>
             </el-table>
           </el-tab-pane>
           <el-tab-pane label="提现" name="withdraw">
             <el-table :data="drawList" style="width: 100%">
-              <el-table-column prop="orderID" label="流水号" width="200"/>
-              <el-table-column prop="date" label="日期" width="150"/>
-              <el-table-column prop="originUserName" label="付款方" width="120"/>
-              <el-table-column prop="fee" label="金额" width="100"/>
-              <el-table-column prop="status" label="状态" width="100"/>
+              <el-table-column prop="orderID" label="流水号" width="300"/>
+              <el-table-column prop="date" label="日期" width="200"/>
+              <el-table-column prop="originUserName" label="付款方" width="200"/>
+              <el-table-column prop="fee" label="金额" width="200"/>
+              <el-table-column prop="status" label="状态" width="200"/>
             </el-table>
           </el-tab-pane>
         </el-tabs>
@@ -159,7 +165,20 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
+.main {
+  width: 70%;
+}
+
+.draw {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .wallet {
-  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 15px 0;
 }
 </style>

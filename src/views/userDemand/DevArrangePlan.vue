@@ -240,7 +240,8 @@ onBeforeMount(() => {
                 placeholder="Pick a day"
                 :disabled="true"
             />
-            <el-button type="primary" style="margin-left: 10px;" @click="privateChat(demand.id, demand.uid)">申请更新计划</el-button>
+            <el-button type="primary" style="margin-left: 10px;" @click="privateChat(demand.id, demand.uid)">申请更新计划
+            </el-button>
           </div>
           <el-card>
             <el-row class="row flex-ai-center" style="margin-bottom: 15px;">
@@ -265,18 +266,22 @@ onBeforeMount(() => {
                 </el-row>
               </el-col>
               <el-col :span="4" class="flex-center">
-                    <span class="plan-operate">
+                  <span class="plan-operate">
                       <span v-if="store['user'].identity === 1">
                         <span v-if="item.status === 1">
                           <el-tag>待完成</el-tag>
                         </span>
                         <span v-else-if="item.status === 2">
-                          <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
-                          <el-tag>申请中</el-tag>
+                          <div class="flex-center">
+                            <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
+                            <span>&nbsp;申请中</span>
+                          </div>
                         </span>
                         <span v-else-if="item.status === 3">
-                          <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
-                          <el-tag>已完成</el-tag>
+                          <div class="flex-center">
+                            <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
+                            <span>&nbsp;已完成</span>
+                          </div>
                         </span>
                       </span>
                       <span v-else-if="store['user'].identity === 2">
@@ -284,15 +289,19 @@ onBeforeMount(() => {
                           <el-tag>待完成</el-tag>
                       </span>
                       <span v-else-if="item.status === 2">
-                        <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
-                        <el-tag>申请中</el-tag>
+                        <div class="flex-center">
+                          <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
+                          <span>&nbsp;申请中</span>
+                        </div>
                       </span>
                       <span v-else-if="item.status === 3">
-                        <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
-                        <el-tag>已完成</el-tag>
+                        <div class="flex-center">
+                          <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
+                          <span>&nbsp;已完成</span>
+                        </div>
                       </span>
                     </span>
-                    </span>
+                  </span>
               </el-col>
             </el-row>
             <el-row>

@@ -5,16 +5,25 @@ import {getSkills} from "@/utils/utils";
 import {global} from "@/static/static";
 import Mask from "@/components/common/Mask.vue"
 import PersonInformation from "@/components/PersonInformation.vue"
+import {useRoute} from "vue-router";
+import {GetUser} from "@/api/api";
 
 const background = global.path.static + "/img/background.png"
 const store = useGlobalStore()
+const route = useRoute()
 
 const user = ref({})
 const editVisible = ref(false)
 
 watch(
     () => store["user"],
-    (value, oldValue, onCleanup) => {
+    async (value, oldValue, onCleanup) => {
+      //为了效率,有点怪
+      if(route.query.uid > 0) {
+        await GetUser(route.query.uid).then(res => {
+          value = res
+        })
+      }
       parseSkills(value)
       user.value = value
     },
@@ -28,7 +37,11 @@ function maskTick() {
 }
 
 function parseSkills(user) {
-  user.theSkills = JSON.parse(user.skills)
+  if(user.skills !== "") {
+    user.theSkills = JSON.parse(user.skills)
+  } else {
+    user.theSkills = []
+  }
   user.topTags = []
   user.tags = []
   getSkills(user.theSkills, 0,

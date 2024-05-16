@@ -4,7 +4,7 @@ import type {UploadProps, UploadUserFile} from 'element-plus'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {defineProps} from "vue/dist/vue";
 import {Close, Plus} from "@element-plus/icons-vue";
-import {checkValue, deepJSONParse, elMsgOption, getDate} from "@/utils/utils";
+import {checkValue, copy, deepJSONParse, elMsgOption, getDate} from "@/utils/utils";
 import {request} from "@/utils/axios";
 import {API, userDemandGroup} from "@/api/api";
 
@@ -110,21 +110,21 @@ function selectRecruitNum() {
   formData.value.requires = []
   let person = {
     name: "",
-    value: 0
+    value: []
   }
   for (let i = 0; i < formData.value.recruitNum; i++) {
     person.name = formData.value.requireName[i]
-    formData.value.requires.push(JSON.parse(JSON.stringify(person)))
+    formData.value.requires.push(copy(person))
   }
 }
 
 function updateDemand(dm) {
   setDemand(dm)
 
-  //创建userDemand
-  // for (let i = 0; i < formData.value.recruitNum; i++) {
-  //   createUserDemand(i + 1)
-  // }
+  // 创建userDemand
+  for (let i = 0; i < formData.value.recruitNum; i++) {
+    createUserDemand(i + 1)
+  }
 }
 
 async function createUserDemand(role) {
@@ -170,7 +170,7 @@ function check() {
       formData.value.recruitNum,
   )
   if (!b) {
-    ElMessage(elMsgOption("请输入需求名称和概述", "warning"))
+    ElMessage(elMsgOption("请填写完整信息", "warning"))
     return false
   }
 

@@ -95,7 +95,6 @@ function convertImageToBase64(file) {
         </el-icon>
       </el-tooltip>
       <el-tooltip
-          v-if="store['user'].identity !== 1"
           class="box-item"
           effect="dark"
           content="更新计划申请"

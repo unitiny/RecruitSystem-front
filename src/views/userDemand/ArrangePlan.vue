@@ -12,6 +12,7 @@ interface Plan {
   title: string,
   content: string,
   fee: number,
+  process: number,
   status: number,
 }
 
@@ -69,6 +70,7 @@ function changePlan(way) {
       title: "",
       content: "",
       fee: 0,
+      process: 0,
       status: 1,
     })
   } else {
@@ -83,6 +85,7 @@ function changeUserPlan(way) {
       title: "",
       content: "",
       fee: 0,
+      process: 0,
       status: 1,
     })
   } else {
@@ -93,6 +96,22 @@ function changeUserPlan(way) {
 function savePlan() {
   try {
     PutDemand(demand.value)
+
+    let sum = 0
+    for (let i = 0; i < userDemandList.value.length; i++) {
+      let item = userDemandList.value[i]
+      for (let j = 0; j < item.plan.length; j++) {
+        sum += item.plan[j].fee
+      }
+    }
+    if (sum > demand.value.remuneration) {
+      ElMessage({
+        showClose: true,
+        message: "计划总金额不得超过需求佣金",
+        type: 'error',
+      })
+      return
+    }
 
     for (let i = 0; i < userDemandList.value.length; i++) {
       let item = copy(userDemandList.value[i])
@@ -132,12 +151,17 @@ async function getUserDemandList() {
     for (let i = 0; i < userDemandList.value.length; i++) {
       if (userDemandList.value[i].plan) {
         userDemandList.value[i].plan = JSON.parse(userDemandList.value[i].plan)
+        let plan = userDemandList.value[i].plan
+        for (let j = 0; j < plan.length; j++) {
+          plan[j].process = (plan[j].fee / demand.value.remuneration) * 100
+        }
       } else {
         userDemandList.value[i].plan = [<Plan>{
           time: "",
           title: "",
           content: "",
           fee: 0,
+          process: 0,
           status: 1,
         }]
       }
@@ -155,6 +179,10 @@ function getSkillTags(val: string[]): string[] {
     res.push(engineerSkills.value[parseInt(v) - 1].label)
   }
   return res
+}
+
+function getFee(item) {
+  item.fee = demand.value.remuneration * item.process * 0.01
 }
 
 watch(
@@ -180,10 +208,10 @@ onBeforeMount(() => {
         name: aliasArr[i]
       })
     }
+    getUserDemandList()
     console.log(demand.value)
   })
 
-  getUserDemandList()
   GetEngineerParentSkills().then(res => {
     engineerSkills.value = res
     console.log(engineerSkills.value)
@@ -285,18 +313,18 @@ onBeforeMount(() => {
                 type="date"
                 placeholder="Pick a day"/>
 
-<!--            <el-select-->
-<!--                class="m-2"-->
-<!--                placeholder="更新状态"-->
-<!--                @change="changePlanStatus(index)"-->
-<!--            >-->
-<!--              <el-option-->
-<!--                  v-for="item in statusSelect"-->
-<!--                  :key="item.value"-->
-<!--                  :label="item.label"-->
-<!--                  :value="item.value"-->
-<!--              />-->
-<!--            </el-select>-->
+            <!--            <el-select-->
+            <!--                class="m-2"-->
+            <!--                placeholder="更新状态"-->
+            <!--                @change="changePlanStatus(index)"-->
+            <!--            >-->
+            <!--              <el-option-->
+            <!--                  v-for="item in statusSelect"-->
+            <!--                  :key="item.value"-->
+            <!--                  :label="item.label"-->
+            <!--                  :value="item.value"-->
+            <!--              />-->
+            <!--            </el-select>-->
           </div>
           <el-card>
             <el-row class="row flex-ai-center" style="margin-bottom: 15px;">
@@ -315,7 +343,11 @@ onBeforeMount(() => {
                 <el-row class="row card-fee">
                   <el-col :span="4">报酬：</el-col>
                   <el-col :span="18">
-                    <el-slider v-model="item.fee" :format-tooltip="formatTooltip"/>
+                    <el-slider show-input
+                               v-model="item.process"
+                               @change="getFee(item)"
+                               :disabled="item.status !== 1"
+                               :format-tooltip="formatTooltip"/>
                   </el-col>
                 </el-row>
               </el-col>
@@ -326,12 +358,16 @@ onBeforeMount(() => {
                           <el-tag>待完成</el-tag>
                         </span>
                         <span v-else-if="item.status === 2">
-                          <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
-                          <el-tag>申请中</el-tag>
+                          <div class="flex-center">
+                            <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
+                            <span>&nbsp;申请中</span>
+                          </div>
                         </span>
                         <span v-else-if="item.status === 3">
-                          <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
-                          <el-tag>已完成</el-tag>
+                          <div class="flex-center">
+                            <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
+                            <span>&nbsp;已完成</span>
+                          </div>
                         </span>
                       </span>
                       <span v-else-if="store['user'].identity === 2">
@@ -339,12 +375,16 @@ onBeforeMount(() => {
                           <el-tag>待完成</el-tag>
                       </span>
                       <span v-else-if="item.status === 2">
-                        <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
-                        <el-tag>申请中</el-tag>
+                        <div class="flex-center">
+                          <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
+                          <span>&nbsp;申请中</span>
+                        </div>
                       </span>
                       <span v-else-if="item.status === 3">
-                        <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
-                        <el-tag>已完成</el-tag>
+                        <div class="flex-center">
+                          <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
+                          <span>&nbsp;已完成</span>
+                        </div>
                       </span>
                     </span>
                     </span>

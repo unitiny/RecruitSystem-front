@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {getAlias} from "@/utils/utils";
-import {computed, defineProps, onMounted, ref} from "vue";
-import {MessageType} from "@/utils/websocket";
+import {computed, defineProps, onMounted, ref, watch} from "vue";
+import {MessageMedia, MessageType} from "@/utils/websocket";
 import {GetEngineerParentSkills} from "@/api/api";
 
 const props = defineProps({
@@ -19,6 +19,7 @@ const props = defineProps({
   }
 })
 
+const role = ref(0) //不与props.cooperate.role双向绑定
 const cooperate = computed(() => props.cooperate)
 const engineerSkills = ref([])
 
@@ -28,19 +29,19 @@ function cooperateCtl(show) {
 
 function selectRole() {
   cooperateCtl(false)
-  applyJoin(cooperate.value.role)
+  applyJoin(role.value)
 }
 
 function applyJoin(role) {
   let alias = getAlias(role - 1)
-  props.confirm!(MessageType.apply, {
+  props.confirm!(MessageType.private, {
     type: 1,
     data: {
       role: role,
       selfContent: `我发起接手需求申请，身份为${alias}，等待对方同意`,
       otherContent: `对方发起接手需求申请，身份为${alias}，是否同意`,
     }
-  })
+  }, MessageMedia.apply)
 }
 
 function getSkillTags(val: string[]): string[] {
@@ -50,6 +51,16 @@ function getSkillTags(val: string[]): string[] {
   }
   return res
 }
+
+watch(
+    () => props.cooperate,
+    (newVal, oldValue, onCleanup) => {
+      role.value = props.cooperate.role
+    },
+    {
+      deep: true
+    }
+)
 
 onMounted(() => {
   GetEngineerParentSkills().then(res => {
@@ -61,7 +72,7 @@ onMounted(() => {
 
 <template>
   <el-dialog v-model="cooperate.visible" title="请选择身份" width="500">
-    <el-radio-group v-model="cooperate.role">
+    <el-radio-group v-model="role">
       <div class="row flex-col">
         <div v-for="(item, index) in props.demand?.requires">
           <el-radio :label="index+1" :value="index+1" size="large" border>

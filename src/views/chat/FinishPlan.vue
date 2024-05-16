@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import {computed, defineProps, onMounted, ref} from "vue";
-import {MessageType} from "@/utils/websocket";
+import {MessageMedia, MessageType} from "@/utils/websocket";
 import {useGlobalStore} from "@/store/pinia";
+import {request} from "@/utils/axios";
+import {userDemandGroup} from "@/api/api";
+import {deepJSONParse, getDateTime} from "@/utils/utils";
 
 const props = defineProps({
-  finishItem: {
+  finishPlan: {
     type: Object,
     required: true
   },
@@ -19,7 +22,7 @@ const props = defineProps({
 })
 
 const store = useGlobalStore()
-const finishPlan = computed(() => props.finishItem)
+const finishPlan = computed(() => props.finishPlan)
 
 function finishPlanCtl(show) {
   finishPlan.value.visible = show
@@ -32,19 +35,23 @@ function updatePlan() {
 }
 
 function applyPlan() {
-  props.confirm!(MessageType.apply, {
+  props.confirm!(MessageType.private, {
     type: 2,
     data: {
       applyPlan: finishPlan.value.applyPlan,
       selfContent: `我发起更新计划进度申请，等待对方同意`,
       otherContent: `对方发起更新计划进度申请，请查看更新详情后决定是否同意`,
     }
-  })
+  }, MessageMedia.apply)
 }
+
+onMounted(() => {
+  console.log(props.demand)
+})
 </script>
 
 <template>
-  <el-dialog v-model="finishItem.visible" title="选择要更新的计划" width="750">
+  <el-dialog v-model="finishPlan.visible" title="选择要更新的计划" width="750">
     <el-scrollbar style="height: 400px;">
       <el-timeline>
         <el-timeline-item v-for="(item, index) in props.demand?.plan" center>
@@ -53,7 +60,7 @@ function applyPlan() {
               <Timer/>
             </el-icon>
             &nbsp;
-            <span>{{ item.time }}</span>
+            <span>{{ getDateTime(item.time) }}</span>
           </div>
           <el-row class="row plan-content">
             <span class="plan-card">
@@ -69,36 +76,45 @@ function applyPlan() {
         </span>
             <span class="plan-operate">
                 <span v-if="store['user'].identity === 1">
-                  <span v-if="item.status === 1">待完成</span>
-                  <span v-else-if="item.status === 2">
-                    <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
-                    申请中
-                  </span>
-                  <span v-else-if="item.status === 3">
-                    <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
-                    已完成
-                  </span>
+                  <el-tag v-if="item.status === 1">待完成</el-tag>
+                  <el-tag v-else-if="item.status === 2">
+                    <div class="flex-center">
+                      <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
+                      <span>&nbsp;申请中</span>
+                    </div>
+                  </el-tag>
+                  <el-tag v-else-if="item.status === 3">
+                    <div class="flex-center">
+                      <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
+                      <span>&nbsp;已完成</span>
+                    </div>
+                  </el-tag>
                 </span>
                 <span v-else-if="store['user'].identity === 2">
                  <span v-if="item.status === 1">
-                   <span v-if="finishItem.applyVisible">
+                   <span class="flex-center" v-if="finishPlan.applyVisible">
+                     <el-tag style="margin-right: 20px;">待完成</el-tag>
                      <el-checkbox
-                         v-model="finishItem.applyPlan[index]"
+                         v-model="finishPlan.applyPlan[index]"
                          label=""
                          size="large"/>
                    </span>
-                   <span v-else>
+                   <el-tag v-else>
                      待完成
-                   </span>
+                   </el-tag>
                  </span>
-                  <span v-else-if="item.status === 2">
-                    <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
-                    申请中
-                  </span>
-                  <span v-else-if="item.status === 3">
-                    <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
-                    已完成
-                  </span>
+                  <el-tag v-else-if="item.status === 2">
+                    <div class="flex-center">
+                      <el-icon :color="'blue'" :size="20"><Loading/></el-icon>
+                      <span>&nbsp;申请中</span>
+                    </div>
+                  </el-tag>
+                  <el-tag v-else-if="item.status === 3">
+                    <div class="flex-center">
+                      <el-icon :color="'green'" :size="20"><CircleCheck/></el-icon>
+                      <span>&nbsp;已完成</span>
+                    </div>
+                  </el-tag>
                 </span>
             </span>
           </el-row>
@@ -107,7 +123,7 @@ function applyPlan() {
     </el-scrollbar>
     <template #footer>
       <div v-if="store['user'].identity === 2 &&
-      finishItem.applyVisible" class="dialog-footer">
+      finishPlan.applyVisible" class="dialog-footer">
         <el-button @click="finishPlanCtl(false)">取消</el-button>
         <el-button @click="updatePlan" type="primary">
           申请

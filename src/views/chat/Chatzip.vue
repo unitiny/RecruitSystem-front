@@ -2,9 +2,11 @@
 import {Message} from "@/utils/websocket";
 import {defineProps} from "vue";
 import {global} from "@/static/static";
+import {useGlobalStore} from "@/store/pinia";
 
 const zip = global.path.static + "/img/zip.png"
 
+const store = useGlobalStore()
 const props = defineProps({
   message: {
     type: Message,
@@ -22,7 +24,10 @@ const props = defineProps({
     <div style="text-align: right; margin: 0">
       <el-button size="small" type="primary"
                  @click="downloadFile(props.message?.privateContent)">下载</el-button>
-      <el-button size="small" type="primary" @click="">撤回</el-button>
+      <el-button size="small"
+                 type="primary"
+                 v-if="store['user'].id === props.message?.senderID"
+                 @click="">撤回</el-button>
     </div>
     <template #reference>
       <el-image class="chat-zip"

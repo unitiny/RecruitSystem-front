@@ -36,7 +36,7 @@ defineExpose({updateDemand})
 </script>
 
 <template>
-  <el-row class="row" justify="center" :gutter="50">
+  <el-row class="row" justify="center">
     <Vue3Lottie
         width="350px"
         height="350px"
@@ -46,11 +46,11 @@ defineExpose({updateDemand})
         :speed="2"
     />
   </el-row>
-  <el-row class="row operate" :gutter="10">
-    <el-col :span="6" align="middle">
-      <el-button @click="payIntend" class="row btn" type="primary" size="large">预支付</el-button>
-    </el-col>
-    <el-col :span="6" align="middle">
+  <el-row class="row operate">
+<!--    <el-col :span="6" align="middle">-->
+<!--      <el-button @click="payIntend" class="row btn" type="primary" size="large">预支付</el-button>-->
+<!--    </el-col>-->
+    <el-col :span="6">
       <el-button @click="finish" class="row btn" type="primary" size="large">发布</el-button>
     </el-col>
   </el-row>

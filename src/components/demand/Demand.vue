@@ -49,6 +49,9 @@ onMounted(() => {
       <el-col :span="20" class="content">
         <el-row class="flex-ai-center">
           <el-col :span="6" class="title">{{ props.demand.name }}</el-col>
+          <el-col :span="2" v-if="props.demand?.status === 3">
+            <el-tag>已完结</el-tag>
+          </el-col>
           <el-col :span="6" v-if="props.demand.type === 2">
             <el-tag>合伙人</el-tag>
           </el-col>
@@ -144,6 +147,7 @@ onMounted(() => {
 
         .money {
           color: $money-color;
+          line-height: normal;
         }
       }
 
@@ -159,6 +163,7 @@ onMounted(() => {
     padding: 0 20px;
     background: $demand-footer;
     border-radius: 0 0 5px 5px;
+    font-size: 16px;
 
     .skill-tags {
       span {

@@ -4,6 +4,7 @@ import PubStep1 from "./Pub_step1.vue"
 import PubStep2 from "./Pub_step2.vue"
 import PubStep3 from "./Pub_step3.vue"
 import PubStep4 from "./Pub_step4.vue"
+import PubStep5 from "./Pub_step5.vue"
 import PubFinish from "./Pub_finish.vue"
 import {request} from "@/utils/axios";
 import {API, demandGroup, PutDemand} from "@/api/api";
@@ -15,14 +16,16 @@ const route = useRoute()
 const router = useRouter()
 const store = useGlobalStore()
 
-const page = [2, 3, 4, 5]
+const page = [2, 3, 4, 5, 6]
 const steps = {
   step1: 1,
   step2: 2,
   step3: 3,
   step4: 4,
-  finish: 5
+  step5: 5,
+  finish: 6
 }
+
 const stepData = ref({
   hasPub: false,
   active: 0,
@@ -44,6 +47,10 @@ const stepData = ref({
       description: ""
     },
     {
+      title: "支付佣金",
+      description: ""
+    },
+    {
       title: "完成",
       description: ""
     },
@@ -56,6 +63,7 @@ const pubStep1 = ref()
 const pubStep2 = ref()
 const pubStep3 = ref()
 const pubStep4 = ref()
+const pubStep5 = ref()
 const pubFinish = ref()
 const formCardRef = ref()
 const scrollerHeight = ref("550px")
@@ -74,6 +82,8 @@ function checkDemand() {
       return pubStep3.value.check()
     case 4:
       return pubStep4.value.check()
+    case 5:
+      return pubStep5.value.check()
   }
   return true
 }
@@ -93,6 +103,9 @@ function changeDemand() {
       pubStep4.value.updateDemand(demand)
       break
     case 5:
+      pubStep5.value.updateDemand(demand)
+      break
+    case 6:
       pubFinish.value.updateDemand(demand)
       break
   }
@@ -156,7 +169,7 @@ function getDemand(did) {
 }
 
 function changeStep(num: number) {
-  if(!checkDemand()) {
+  if(num > 0 && !checkDemand()) {
     return
   }
   let nextActive = stepData.value.active + num
@@ -202,6 +215,7 @@ onMounted(() => {
               <PubStep2 v-else-if="currentStep === steps.step2" ref="pubStep2" :demand="demand"></PubStep2>
               <PubStep3 v-else-if="currentStep === steps.step3" ref="pubStep3" :demand="demand"></PubStep3>
               <PubStep4 v-else-if="currentStep === steps.step4" ref="pubStep4" :demand="demand"></PubStep4>
+              <PubStep5 v-else-if="currentStep === steps.step5" ref="pubStep5" :demand="demand" :next="changeStep"></PubStep5>
               <PubFinish v-else :demand="demand" ref="pubFinish"></PubFinish>
             </el-scrollbar>
           </el-row>
@@ -211,10 +225,10 @@ onMounted(() => {
     <el-col :span="4" class="column">
       <el-card shadow="never" class="column">
         <el-row v-if="stepData.active <= stepData.list.length" class="row" justify="center" :gutter="10">
-          <el-col :span="20" align="middle">
+          <el-col :span="20">
             <el-button @click="changeStep(-1)" class="row btn" type="primary" size="large">上一步</el-button>
           </el-col>
-          <el-col :span="20" align="middle">
+          <el-col :span="20">
             <el-button @click="changeStep(1)" class="row btn" type="primary" size="large">下一步</el-button>
           </el-col>
         </el-row>

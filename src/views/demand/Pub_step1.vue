@@ -16,6 +16,7 @@ function selectIdentity(i) {
 
 function updateDemand(dm) {
   dm.value.type = demand.value.type
+  dm.value.status = 1
 }
 
 function check() {

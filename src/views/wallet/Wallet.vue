@@ -37,7 +37,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="main">
     <el-row class="row wallet" :gutter="20">
       <el-col :span="12" class="column">
         <el-card>
@@ -55,7 +55,7 @@ onMounted(() => {
       </el-col>
     </el-row>
     <el-row class="row">
-      <el-card>
+      <el-card class="row">
         <el-tabs v-model="tabActiveName" class="demo-tabs" @tab-click="handleClick">
           <el-tab-pane label="支出" name="pay">
             <el-table :data="payList" style="width: 100%">
@@ -72,6 +72,10 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
+.main {
+  width: 70%;
+}
+
 .wallet {
   margin-bottom: 15px;
 }

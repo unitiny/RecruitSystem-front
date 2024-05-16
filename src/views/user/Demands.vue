@@ -142,8 +142,8 @@ function getDemandList() {
   }).then(res => {
     demandList.value.push(...res["list"])
     demandTotal.value = res["total"]
-    console.log(res)
     demandRequest.value.start += demandRequest.value.limit
+    console.log("demandList", res)
   })
 }
 
