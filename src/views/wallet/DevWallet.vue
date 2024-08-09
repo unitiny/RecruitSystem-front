@@ -134,7 +134,7 @@ onMounted(() => {
       <el-col :span="7" class="column">
         <el-card>
           <div>当月提现</div>
-          <div>￥{{ wallet["wallet"]?.balanceFee }}</div>
+          <div>￥{{ 0 }}</div>
         </el-card>
       </el-col>
     </el-row>

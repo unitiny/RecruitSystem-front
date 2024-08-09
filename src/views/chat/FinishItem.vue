@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import {computed, defineProps, onMounted, ref} from "vue";
+import {computed, defineProps, onBeforeMount, ref} from "vue";
 import {useGlobalStore} from "@/store/pinia";
+import {GetDemand} from "@/api/api"
 
 const props = defineProps({
   finishItem: {
@@ -28,9 +29,6 @@ function updateItem() {
   finishItemCtl(false)
   props.confirm!()
 }
-
-onMounted(() => {
-})
 
 </script>
 

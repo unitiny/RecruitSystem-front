@@ -112,7 +112,6 @@ function setWS() {
             updateMessage(message)
             break
           case SystemType.agreeJoin:
-            getUserDemand()
             cooperate.value.role = message.systemContent.data.role
             break
           case SystemType.agreeFinishPlan:
@@ -252,8 +251,8 @@ function getApplyMsgData(message: Message) {
   }
 }
 
-function getUserDemand() {
-  request({
+async function getUserDemand() {
+  await request({
     url: userDemandGroup.getUserDemand,
     params: {
       did: chat.value.curDemand.id,
@@ -276,7 +275,7 @@ async function exchangeChatUser(chatID) {
   chat.value.curChatUser = rooms.value[chatID].chatUser
   chat.value.curChatUserID = rooms.value[chatID].chatUser.id
   chat.value.curMessages = rooms.value[chatID].messages
-  getUserDemand()
+  await getUserDemand()
 
   nextTick(() => {
     readMessage()
@@ -314,18 +313,21 @@ function agreeJoin() {
   })
 }
 
-function applyJoin() {
-  if(chat.value.curDemand.hasRecruitNum >= chat.value.curDemand.recruitNum) {
+async function applyJoin() {
+  if (chat.value.curDemand.hasRecruitNum >= chat.value.curDemand.recruitNum) {
     ElMessage(elMsgOption("招募人数已满，无法接手该需求", "error"))
     return
-  }else if(cooperate.value.role !== 0) {
+  } else if (cooperate.value.role !== 0) {
     ElMessage(elMsgOption("已接手该需求，不可重复申请", "error"))
     return
   }
+
+  await getUserDemand()
   cooperate.value.visible = true
 }
 
-function applyFinishPlan() {
+async function applyFinishPlan() {
+  await getUserDemand()
   finishPlan.value.visible = true
   finishPlan.value.applyVisible = true
 }
@@ -387,7 +389,8 @@ function agreeFinishPlan() {
   })
 }
 
-function finishDetail() {
+async function finishDetail() {
+  await getUserDemand()
   finishPlan.value.visible = true
 }
 
@@ -416,7 +419,11 @@ function visibleFinishItem() {
   if (store['user'].identity !== 1) {
     return
   }
-  finishItem.value.visible = true
+
+  GetDemand(chat.value.curDemand.id).then(res => {
+    chat.value.curDemand.leftFee = res["leftFee"]
+    finishItem.value.visible = true
+  })
 }
 
 function agreeFinishItem() {

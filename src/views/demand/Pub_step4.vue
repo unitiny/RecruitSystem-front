@@ -11,6 +11,7 @@ interface Plan {
   title: string,
   content: string,
   fee: number,
+  process: number,
   status: number,
 }
 
@@ -71,6 +72,7 @@ async function getUserDemandList() {
           title: "",
           content: "",
           fee: 0,
+          process: 0,
           status: 1,
         }]
       }
@@ -86,6 +88,7 @@ function changePlan(way) {
       title: "",
       content: "",
       fee: 0,
+      process: 0,
       status: 1,
     })
   } else {
@@ -103,6 +106,7 @@ function changeUserPlan(way) {
       title: "",
       content: "",
       fee: 0,
+      process: 0,
       status: 1,
     })
   } else {
@@ -164,6 +168,14 @@ function setData() {
   })
 }
 
+function check() {
+  return true
+}
+
+function getFee(item) {
+  item.fee = demand.value.remuneration * item.process * 0.01
+}
+
 watch(
     () => activeIndex.value,
     (value, oldValue, onCleanup) => {
@@ -175,9 +187,6 @@ watch(
     }
 )
 
-function check() {
-  return true
-}
 
 onBeforeMount(() => {
   getUserDemandList()
@@ -279,7 +288,7 @@ defineExpose({updateDemand, check})
             </div>
             <el-card>
               <el-row class="row flex-ai-center">
-                <el-col :span="12">
+                <el-col :span="24">
                   <span>名称：</span>
                   <el-col>
                     <el-input
@@ -288,14 +297,20 @@ defineExpose({updateDemand, check})
                     />
                   </el-col>
                 </el-col>
-                <el-col :span="12" class="card-right">
+              </el-row>
+              <el-row class="row flex-ai-center" style="margin: 10px 0;">
+                <el-col :span="24" class="card-right">
                   <el-row class="row card-fee">
                     报酬：&nbsp;&nbsp;
-                    <el-slider show-input v-model="item.fee" :format-tooltip="formatTooltip"/>
+                    <el-slider show-input v-model="item.process"
+                               @change="getFee(item)"
+                               :disabled="item.status !== 1"
+                               :format-tooltip="formatTooltip"/>
                   </el-row>
                 </el-col>
               </el-row>
               <el-row>
+                <div>内容：</div>
                 <el-col :span="24">
                   <el-input
                       v-model="item.content"
@@ -328,7 +343,7 @@ defineExpose({updateDemand, check})
 
 <style scoped lang="scss">
 .content {
-  padding: 10px 120px;
+  padding: 10px 100px;
 }
 
 .menu {

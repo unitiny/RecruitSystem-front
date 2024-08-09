@@ -51,7 +51,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <el-dialog v-model="finishPlan.visible" title="选择要更新的计划" width="750">
+  <el-dialog v-model="finishPlan.visible" title="更新计划" width="750">
     <el-scrollbar style="height: 400px;">
       <el-timeline>
         <el-timeline-item v-for="(item, index) in props.demand?.plan" center>

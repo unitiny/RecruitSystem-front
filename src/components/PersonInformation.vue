@@ -33,7 +33,11 @@
       <el-row class="row">
         <el-col :span="20">
           <el-form-item class="signature" label="个性签名" prop="signature">
-            <el-input v-model="ruleForm.signature" resize="none" :rows="7" :autosize="{ minRows: 7, maxRows: 7 }"
+            <el-input v-model="ruleForm.signature" resize="none" :rows="3" :autosize="{ minRows: 3, maxRows: 5 }"
+                      type="textarea"/>
+          </el-form-item>
+          <el-form-item class="description" label="个人介绍" prop="description">
+            <el-input v-model="ruleForm.description" resize="none" :rows="3" :autosize="{ minRows: 3, maxRows: 5 }"
                       type="textarea"/>
           </el-form-item>
         </el-col>
@@ -49,7 +53,7 @@
 </template>
 
 <script lang="ts" setup>
-import {defineEmits, defineProps, reactive, ref} from 'vue'
+import {defineEmits, defineProps, reactive, ref, onBeforeMount} from 'vue'
 import type {FormInstance, FormRules} from 'element-plus'
 import UploadAvatar from "@/components/common/UploadAvatar.vue"
 import {request} from "@/utils/axios";
@@ -57,12 +61,20 @@ import {API, userGroup} from "@/api/api";
 import {useGlobalStore} from "@/store/pinia";
 import {elMsgOption} from "@/utils/utils";
 
+const props = defineProps({
+  info: {
+    type: Object,
+    required: false
+  }
+})
+
 interface RuleForm {
   name: string
   mailbox: string
   avatar: string
   skill: string[]
-  signature: string
+  signature: string,
+  description: string
 }
 
 const emits = defineEmits(['cancel'])
@@ -75,6 +87,7 @@ const ruleForm = reactive<RuleForm>({
   avatar: '',
   skill: [],
   signature: '',
+  description: ''
 })
 
 const rules = reactive<FormRules<RuleForm>>({
@@ -99,6 +112,9 @@ const rules = reactive<FormRules<RuleForm>>({
   ],
   signature: [
     {required: false, message: 'Please input activity signature', trigger: 'blur'},
+  ],
+  description: [
+    {required: false, message: 'Please input activity description', trigger: 'blur'},
   ],
 })
 
@@ -289,6 +305,7 @@ const submitForm = async (formEl: FormInstance | undefined) => {
           "avatar": ruleForm.avatar,
           "email": ruleForm.mailbox,
           "signature": ruleForm.signature,
+          "description": ruleForm.description,
           "skills": JSON.stringify(ruleForm.skill)
         }
       }).then(res => {
@@ -318,6 +335,18 @@ const options = Array.from({length: 10000}).map((_, idx) => ({
 const cancel = () => {
   emits('cancel')
 }
+
+onBeforeMount(() => {
+  console.log(props.info)
+  if (JSON.stringify(props.info) !== "{}") {
+    ruleForm.name = props.info.nickname
+    ruleForm.mailbox = props.info.email
+    // ruleForm.avatar = props.info.avatar
+    // ruleForm.skill = props.info.theSkills
+    ruleForm.signature = props.info.signature
+    ruleForm.description = props.info.description
+  }
+})
 </script>
 
 <style scoped lang="scss">

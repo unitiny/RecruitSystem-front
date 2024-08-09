@@ -92,6 +92,7 @@ function login() {
   }).catch(error => {
     console.log(error)
     messageOption.message = errorText(error, i18nText("loginError"))
+    // messageOption.message = "验证码错误"
     messageOption.type = "error"
   }).finally(() => {
     data.value.loginLoading = false

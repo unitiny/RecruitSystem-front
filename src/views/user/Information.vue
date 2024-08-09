@@ -112,7 +112,7 @@ function parseSkills(user) {
       </el-card>
     </el-row>
     <Mask @nextTick="maskTick" :visible="editVisible">
-      <PersonInformation @cancel="maskTick"></PersonInformation>
+      <PersonInformation @cancel="maskTick" :info="user"></PersonInformation>
     </Mask>
   </div>
 
